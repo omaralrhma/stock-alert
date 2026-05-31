@@ -106,7 +106,7 @@ def get_fibonacci_levels(df):
     high = float(np.max(window))
     low  = float(np.min(window))
     diff = high - low
-    ratios = [0.236, 0.382, 0.5, 0.618, 0.786]
+    ratios = [0.382, 0.5, 0.618]
     fibs = []
     for r in ratios:
         fibs.append(("fib", round(r * 100, 1), high - diff * r))
@@ -171,25 +171,47 @@ def find_trendline(df, n=30, tol=0.005):
 
 def get_role_reversal(df, tf):
     closes = df["Close"].squeeze()
-    opens  = df["Open"].squeeze()
     highs  = df["High"].squeeze()
     lows   = df["Low"].squeeze()
     if len(closes) < 30: return []
 
-    c0,o0,h0,l0 = float(closes.iloc[-1]),float(opens.iloc[-1]),float(highs.iloc[-1]),float(lows.iloc[-1])
-    c1,c2       = float(closes.iloc[-2]),float(closes.iloc[-3])
+    c0  = float(closes.iloc[-1])
     results = []
 
     for level_type, level_price in find_key_levels(df):
-        margin = level_price * 0.008
+        margin      = level_price * 0.008
+        min_move    = level_price * 0.02   # لازم يبتعد 2% على الأقل بعد الاختراق
+
         if level_type == "resistance":
-            if c2 < level_price and c1 > level_price + margin \
-                    and abs(c0 - level_price) <= margin * 2:
+            # ابحث في آخر 15 شمعة: هل السعر اخترق المستوى وصعد 2%+ ثم رجع إليه
+            broke_above = False
+            peak_after  = 0.0
+            for i in range(-15, -1):
+                ci = float(closes.iloc[i])
+                hi = float(highs.iloc[i])
+                if ci > level_price + margin:
+                    broke_above = True
+                if broke_above and hi > peak_after:
+                    peak_after = hi
+            # الشرط: اخترق + ارتفع 2% + الآن رجع للمستوى
+            if broke_above and peak_after >= level_price + min_move                     and abs(c0 - level_price) <= margin * 2:
                 results.append(("role_reversal","bull", level_price, c0, tf))
+
         elif level_type == "support":
-            if c2 > level_price and c1 < level_price - margin \
-                    and abs(c0 - level_price) <= margin * 2:
+            # ابحث في آخر 15 شمعة: هل السعر كسر المستوى وهبط 2%+ ثم رجع إليه
+            broke_below = False
+            trough_after = float('inf')
+            for i in range(-15, -1):
+                ci = float(closes.iloc[i])
+                li = float(lows.iloc[i])
+                if ci < level_price - margin:
+                    broke_below = True
+                if broke_below and li < trough_after:
+                    trough_after = li
+            # الشرط: كسر + هبط 2% + الآن رجع للمستوى
+            if broke_below and trough_after <= level_price - min_move                     and abs(c0 - level_price) <= margin * 2:
                 results.append(("role_reversal","bear", level_price, c0, tf))
+
     return results[:1]
 
 # ═══════════════════════════════════════════════
