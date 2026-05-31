@@ -184,11 +184,11 @@ def get_role_reversal(df, tf):
         margin = level_price * 0.008
         if level_type == "resistance":
             if c2 < level_price and c1 > level_price + margin \
-                    and abs(l0 - level_price) <= margin * 2 and is_hammer(o0,h0,l0,c0):
+                    and abs(c0 - level_price) <= margin * 2:
                 results.append(("role_reversal","bull", level_price, c0, tf))
         elif level_type == "support":
             if c2 > level_price and c1 < level_price - margin \
-                    and abs(h0 - level_price) <= margin * 2 and is_bearish_candle(o0,h0,l0,c0):
+                    and abs(c0 - level_price) <= margin * 2:
                 results.append(("role_reversal","bear", level_price, c0, tf))
     return results[:1]
 
