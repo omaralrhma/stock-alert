@@ -1,19 +1,29 @@
 name: Stock Alert
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 * * * *'
-  workflow_dispatch:
 
 jobs:
   run:
     runs-on: ubuntu-latest
+    timeout-minutes: 55
+
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install
-        run: pip install yfinance requests schedule numpy
-      - name: Run
-        run: timeout 3000 python stock_alert.py || true
+
+      - name: Install dependencies
+        run: |
+          pip install yfinance requests schedule numpy scipy
+
+      - name: Run Stock Alert
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHATS: ${{ secrets.TG_CHATS }}
+        run: |
+          python stock_alert.py --once
