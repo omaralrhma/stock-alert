@@ -6,6 +6,8 @@ import numpy as np
 import os
 import sys
 from scipy import stats
+from datetime import datetime
+import pytz
 
 # ── يقرأ من Environment Variables إذا موجودة، وإلا يستخدم القيم الافتراضية
 TOKEN    = os.environ.get("TG_TOKEN",  "8751470715:AAGqx90Zho44N7pzr42XHZs3Y0gcDZKP_V4")
@@ -15,43 +17,80 @@ CHAT_IDS = [c.strip() for c in _chats.split(",") if c.strip()]
 # ── وضع التشغيل: --once = فحص واحد ثم يخرج (مناسب لـ GitHub Actions)
 RUN_ONCE = "--once" in sys.argv
 
+# ═══════════════════════════════════════════════
+# أسهم حلال فقط — محذوف: بنوك، تأمين، كحول، تبغ، أسلحة
+# ═══════════════════════════════════════════════
 STOCKS = {
+    # ── تكنولوجيا ──
     "AAPL":"💻 تكنولوجيا","MSFT":"💻 تكنولوجيا","NVDA":"💻 تكنولوجيا",
-    "GOOGL":"💻 تكنولوجيا","META":"💻 تكنولوجيا","AMZN":"💻 تكنولوجيا",
-    "TSLA":"💻 تكنولوجيا","AMD":"💻 تكنولوجيا","INTC":"💻 تكنولوجيا",
-    "CRM":"💻 تكنولوجيا","ORCL":"💻 تكنولوجيا","ADBE":"💻 تكنولوجيا",
-    "QCOM":"💻 تكنولوجيا","TXN":"💻 تكنولوجيا","AMAT":"💻 تكنولوجيا",
-    "MU":"💻 تكنولوجيا","LRCX":"💻 تكنولوجيا","KLAC":"💻 تكنولوجيا",
-    "SNPS":"💻 تكنولوجيا","CDNS":"💻 تكنولوجيا","PANW":"💻 تكنولوجيا",
-    "CRWD":"💻 تكنولوجيا","ZS":"💻 تكنولوجيا","FTNT":"💻 تكنولوجيا",
-    "NET":"💻 تكنولوجيا","SNOW":"💻 تكنولوجيا","DDOG":"💻 تكنولوجيا",
-    "MDB":"💻 تكنولوجيا","TEAM":"💻 تكنولوجيا","NOW":"💻 تكنولوجيا",
-    "SHOP":"💻 تكنولوجيا","PLTR":"💻 تكنولوجيا","AVGO":"💻 تكنولوجيا",
-    "MRVL":"💻 تكنولوجيا","ARM":"💻 تكنولوجيا","SMCI":"💻 تكنولوجيا",
-    "JPM":"🏦 مالية","BAC":"🏦 مالية","GS":"🏦 مالية","MS":"🏦 مالية",
-    "WFC":"🏦 مالية","C":"🏦 مالية","BLK":"🏦 مالية","AXP":"🏦 مالية",
-    "V":"🏦 مالية","MA":"🏦 مالية","COF":"🏦 مالية","PYPL":"🏦 مالية",
-    "SQ":"🏦 مالية","COIN":"🏦 مالية","SPGI":"🏦 مالية","ICE":"🏦 مالية",
-    "CME":"🏦 مالية","NDAQ":"🏦 مالية",
+    "GOOGL":"💻 تكنولوجيا","AMZN":"💻 تكنولوجيا","TSLA":"💻 تكنولوجيا",
+    "AMD":"💻 تكنولوجيا","INTC":"💻 تكنولوجيا","CRM":"💻 تكنولوجيا",
+    "ORCL":"💻 تكنولوجيا","ADBE":"💻 تكنولوجيا","QCOM":"💻 تكنولوجيا",
+    "TXN":"💻 تكنولوجيا","AMAT":"💻 تكنولوجيا","MU":"💻 تكنولوجيا",
+    "LRCX":"💻 تكنولوجيا","KLAC":"💻 تكنولوجيا","SNPS":"💻 تكنولوجيا",
+    "CDNS":"💻 تكنولوجيا","PANW":"💻 تكنولوجيا","CRWD":"💻 تكنولوجيا",
+    "ZS":"💻 تكنولوجيا","FTNT":"💻 تكنولوجيا","NET":"💻 تكنولوجيا",
+    "SNOW":"💻 تكنولوجيا","DDOG":"💻 تكنولوجيا","MDB":"💻 تكنولوجيا",
+    "TEAM":"💻 تكنولوجيا","NOW":"💻 تكنولوجيا","SHOP":"💻 تكنولوجيا",
+    "PLTR":"💻 تكنولوجيا","AVGO":"💻 تكنولوجيا","MRVL":"💻 تكنولوجيا",
+    "ARM":"💻 تكنولوجيا","SMCI":"💻 تكنولوجيا","UBER":"💻 تكنولوجيا",
+    "ABNB":"💻 تكنولوجيا","DASH":"💻 تكنولوجيا","RBLX":"💻 تكنولوجيا",
+    "U":"💻 تكنولوجيا","GTLB":"💻 تكنولوجيا","HUBS":"💻 تكنولوجيا",
+
+    # ── صحة وأدوية (بدون كحول أو تبغ) ──
     "JNJ":"🏥 صحة","PFE":"🏥 صحة","MRK":"🏥 صحة","ABBV":"🏥 صحة",
     "LLY":"🏥 صحة","BMY":"🏥 صحة","AMGN":"🏥 صحة","GILD":"🏥 صحة",
     "VRTX":"🏥 صحة","REGN":"🏥 صحة","MRNA":"🏥 صحة","TMO":"🏥 صحة",
     "DHR":"🏥 صحة","ABT":"🏥 صحة","MDT":"🏥 صحة","ISRG":"🏥 صحة",
+    "DXCM":"🏥 صحة","IDXX":"🏥 صحة","BSX":"🏥 صحة","EW":"🏥 صحة",
+    "ZBH":"🏥 صحة","PODD":"🏥 صحة","INSP":"🏥 صحة","NTRA":"🏥 صحة",
+
+    # ── طاقة (نفط وغاز وطاقة متجددة) ──
     "XOM":"⛽ طاقة","CVX":"⛽ طاقة","COP":"⛽ طاقة","EOG":"⛽ طاقة",
-    "PXD":"⛽ طاقة","DVN":"⛽ طاقة","MPC":"⛽ طاقة","VLO":"⛽ طاقة",
-    "OXY":"⛽ طاقة","HAL":"⛽ طاقة","SLB":"⛽ طاقة","HES":"⛽ طاقة",
+    "DVN":"⛽ طاقة","MPC":"⛽ طاقة","VLO":"⛽ طاقة","OXY":"⛽ طاقة",
+    "HAL":"⛽ طاقة","SLB":"⛽ طاقة","HES":"⛽ طاقة",
+    "ENPH":"🌱 طاقة متجددة","FSLR":"🌱 طاقة متجددة","RUN":"🌱 طاقة متجددة",
+    "BE":"🌱 طاقة متجددة","PLUG":"🌱 طاقة متجددة","SEDG":"🌱 طاقة متجددة",
+
+    # ── استهلاكي حلال (بدون كحول وتبغ) ──
     "WMT":"🛒 استهلاكي","TGT":"🛒 استهلاكي","COST":"🛒 استهلاكي",
     "MCD":"🛒 استهلاكي","SBUX":"🛒 استهلاكي","CMG":"🛒 استهلاكي",
-    "NKE":"🛒 استهلاكي","LULU":"🛒 استهلاكي","KO":"🛒 استهلاكي",
-    "PEP":"🛒 استهلاكي","PM":"🛒 استهلاكي","MNST":"🛒 استهلاكي",
-    "BA":"🏭 صناعي","LMT":"🏭 صناعي","RTX":"🏭 صناعي","CAT":"🏭 صناعي",
-    "DE":"🏭 صناعي","UPS":"🏭 صناعي","FDX":"🏭 صناعي","HON":"🏭 صناعي",
-    "GE":"🏭 صناعي","NOC":"🏭 صناعي","GD":"🏭 صناعي",
-    "AMT":"📡 اتصالات","T":"📡 اتصالات","VZ":"📡 اتصالات","TMUS":"📡 اتصالات",
-    "PLD":"🏢 عقارات","O":"🏢 عقارات","SPG":"🏢 عقارات",
+    "NKE":"🛒 استهلاكي","LULU":"🛒 استهلاكي","MNST":"🛒 استهلاكي",
+    "EL":"🛒 استهلاكي","ULTA":"🛒 استهلاكي","ONON":"🛒 استهلاكي",
+    "SKX":"🛒 استهلاكي","DECK":"🛒 استهلاكي","RH":"🛒 استهلاكي",
+
+    # ── صناعي (بدون أسلحة) ──
+    "CAT":"🏭 صناعي","DE":"🏭 صناعي","UPS":"🏭 صناعي",
+    "FDX":"🏭 صناعي","HON":"🏭 صناعي","GE":"🏭 صناعي",
+    "EMR":"🏭 صناعي","ETN":"🏭 صناعي","ROK":"🏭 صناعي",
+    "PH":"🏭 صناعي","GNRC":"🏭 صناعي","XYL":"🏭 صناعي",
+
+    # ── اتصالات ──
+    "TMUS":"📡 اتصالات","NFLX":"📡 اتصالات","DIS":"📡 اتصالات",
+    "WBD":"📡 اتصالات","PARA":"📡 اتصالات","SPOT":"📡 اتصالات",
+
+    # ── مواد خام ──
+    "NEM":"⛏ مواد","FCX":"⛏ مواد","ALB":"⛏ مواد","MP":"⛏ مواد",
+    "AA":"⛏ مواد","X":"⛏ مواد","CLF":"⛏ مواد",
+
+    # ── مؤشرات وذهب ──
     "SPY":"📊 مؤشر","QQQ":"📊 مؤشر","IWM":"📊 مؤشر",
-    "XLK":"📊 مؤشر","XLF":"📊 مؤشر","XLE":"📊 مؤشر","GLD":"📊 مؤشر",
+    "XLK":"📊 مؤشر","XLE":"📊 مؤشر","GLD":"📊 مؤشر","SLV":"📊 مؤشر",
 }
+
+# ═══════════════════════════════════════════════
+# فلتر أوقات السوق الأمريكي
+# ═══════════════════════════════════════════════
+
+def is_market_open():
+    """تحقق إن السوق الأمريكي مفتوح الآن (9:30 - 16:00 ET، الإثنين-الجمعة)"""
+    et = pytz.timezone("America/New_York")
+    now = datetime.now(et)
+    if now.weekday() >= 5:  # السبت والأحد
+        return False
+    market_open  = now.replace(hour=9,  minute=30, second=0, microsecond=0)
+    market_close = now.replace(hour=16, minute=0,  second=0, microsecond=0)
+    return market_open <= now <= market_close
 
 # ═══════════════════════════════════════════════
 # إرسال تيليجرام
@@ -86,16 +125,54 @@ def get_data(symbol, interval):
 # المساعدات التحليلية
 # ═══════════════════════════════════════════════
 
-def find_key_levels(df, lookback=15):
-    highs = df["High"].squeeze().values
-    lows  = df["Low"].squeeze().values
-    levels = []
-    for i in range(lookback, len(highs) - lookback):
+def find_key_levels(df, lookback=20, min_touches=2, zone_pct=0.008):
+    """
+    يلتقط فقط المستويات القوية والواضحة:
+    - قمة أو قاع بارز (lookback=20 شمعة على كل جانب)
+    - لمسه السعر مرتين على الأقل
+    - الارتداد عنه واضح (body كبير)
+    """
+    highs  = df["High"].squeeze().values
+    lows   = df["Low"].squeeze().values
+    closes = df["Close"].squeeze().values
+    opens  = df["Open"].squeeze().values
+    n = len(highs)
+    raw_levels = []
+
+    # ① التقط القمم والقيعان البارزة
+    for i in range(lookback, n - lookback):
         if highs[i] == max(highs[i-lookback:i+lookback]):
-            levels.append(("resistance", float(highs[i])))
+            # تأكد أن الارتداد عنها قوي (جسم شمعة كبير)
+            body = abs(closes[i] - opens[i])
+            total = highs[i] - lows[i]
+            if total > 0 and body / total >= 0.3:
+                raw_levels.append(("resistance", float(highs[i]), i))
         if lows[i] == min(lows[i-lookback:i+lookback]):
-            levels.append(("support", float(lows[i])))
-    return levels
+            body = abs(closes[i] - opens[i])
+            total = highs[i] - lows[i]
+            if total > 0 and body / total >= 0.3:
+                raw_levels.append(("support", float(lows[i]), i))
+
+    # ② احتسب عدد مرات اللمس لكل مستوى
+    strong_levels = []
+    used = set()
+    for idx, (ltype, lprice, li) in enumerate(raw_levels):
+        if idx in used:
+            continue
+        zone = lprice * zone_pct
+        touches = 1
+        for jdx, (jtype, jprice, ji) in enumerate(raw_levels):
+            if jdx == idx or jdx in used:
+                continue
+            if jtype == ltype and abs(jprice - lprice) <= zone:
+                touches += 1
+                used.add(jdx)
+        # فقط المستويات التي لمسها السعر مرتين أو أكثر
+        if touches >= min_touches:
+            strong_levels.append((ltype, lprice))
+        used.add(idx)
+
+    return strong_levels
 
 def get_fibonacci_levels(df):
     """احسب مستويات فيبوناتشي على آخر موجة"""
@@ -321,10 +398,17 @@ def get_cluster_zone(df, tf):
     ma50    = float(closes.rolling(50).mean().iloc[-1])
     ma100   = float(closes.rolling(100).mean().iloc[-1])
 
-    # اجمع كل المستويات الفنية مع تسمياتها
+    # اجمع كل المستويات الفنية مع تسمياتها (بدون تكرار)
     all_levels = []
+    res_count = 0
+    sup_count = 0
     for lt, lv in levels:
-        label = "مقاومة أفقية" if lt == "resistance" else "دعم أفقي"
+        if lt == "resistance":
+            res_count += 1
+            label = f"مقاومة أفقية #{res_count}"
+        else:
+            sup_count += 1
+            label = f"دعم أفقي #{sup_count}"
         all_levels.append((lv, label))
     for _, ratio, lv in fibs:
         all_levels.append((lv, f"فيبوناتشي {ratio}%"))
@@ -333,6 +417,15 @@ def get_cluster_zone(df, tf):
 
     # ابحث عن المستويات القريبة من السعر الحالي
     nearby = [(lv, lbl) for lv, lbl in all_levels if abs(lv - curr_c) <= margin * 3]
+    # أزل المكررات بالاسم
+    seen_labels = set()
+    nearby_unique = []
+    for lv, lbl in nearby:
+        base = lbl.split(" #")[0]
+        if base not in seen_labels:
+            seen_labels.add(base)
+            nearby_unique.append((lv, lbl))
+    nearby = nearby_unique
 
     if len(nearby) < 2: return []
 
@@ -374,7 +467,6 @@ def msg_role_reversal(sym, sector, sig):
     return (
         f"{header}\n"
         f"🏷 {sector}\n"
-        f"{SEPARATOR}\n"
         f"📐 الفريم: <b>{tf}</b>\n"
         f"الحالة: {state}\n"
         f"{candle}\n"
@@ -383,7 +475,6 @@ def msg_role_reversal(sym, sector, sig):
         f"   المستوى: <b>${level:.2f}</b>\n"
         f"{lines_s}\n"
         f"💰 السعر الحالي: <b>${price:.2f}</b>\n"
-        f"{SEPARATOR}"
     )
 
 def msg_momentum(sym, sector, sig):
@@ -402,10 +493,8 @@ def msg_momentum(sym, sector, sig):
     return (
         f"{header}\n"
         f"🏷 {sector}\n"
-        f"{SEPARATOR}\n"
         f"📐 الفريم: <b>{tf}</b>\n"
         f"الحدث: {event}\n"
-        f"{SEPARATOR}\n"
         f"📊 حجم التداول: <b>{vol_lbl}</b> (x{vr:.1f})\n"
         f"📏 حجم الجسم:   x{br:.1f} عن المتوسط\n"
         f"💰 السعر الحالي: <b>${price:.2f}</b>\n"
@@ -427,10 +516,8 @@ def msg_ma(sym, sector, sig):
     return (
         f"{header}\n"
         f"🏷 {sector}\n"
-        f"{SEPARATOR}\n"
         f"📐 الفريم: <b>{tf}</b>\n"
         f"الحدث: {event}\n"
-        f"{SEPARATOR}\n"
         f"📌 MA 50:  <b>${ma50_val:.2f}</b>\n"
         f"📌 MA 100: <b>${ma100_val:.2f}</b>\n"
         f"💰 السعر الحالي: <b>${price:.2f}</b>\n"
@@ -452,14 +539,12 @@ def msg_trendline(sym, sector, sig):
     return (
         f"{header}\n"
         f"🏷 {sector}\n"
-        f"{SEPARATOR}\n"
         f"📐 الفريم: <b>{tf}</b>\n"
         f"{arrow_art}\n"
         f"خط الترند عند: <b>${trendline_val:.2f}</b>\n"
         f"{SEPARATOR}\n"
         f"{status}\n"
         f"💰 السعر الحالي: <b>${price:.2f}</b>\n"
-        f"{SEPARATOR}"
     )
 
 def msg_cluster(sym, sector, sig):
@@ -478,20 +563,12 @@ def msg_cluster(sym, sector, sig):
     return (
         f"{header}\n"
         f"🏷 {sector}\n"
-        f"╔══════════════════╗\n"
-        f"║  🔲 CLUSTER ZONE  ║\n"
-        f"╚══════════════════╝\n"
         f"📐 الفريم: <b>{tf}</b>\n"
-        f"{SEPARATOR}\n"
         f"📍 نطاق الكلاستر:\n"
         f"   من: <b>${zone_low:.2f}</b>  →  إلى: <b>${zone_hi:.2f}</b>\n"
-        f"{SEPARATOR}\n"
-        f"🧩 المكونات:\n"
-        f"   {comp_str}\n"
-        f"{SEPARATOR}\n"
+        f"🧩 المكونات: {comp_str}\n"
         f"{reaction}\n"
         f"💰 السعر الحالي: <b>${price:.2f}</b>\n"
-        f"{SEPARATOR}\n"
         f"الحالة المتوقعة: {expected}"
     )
 
@@ -500,6 +577,13 @@ def msg_cluster(sym, sector, sig):
 # ═══════════════════════════════════════════════
 
 def check_all():
+    # ── فلتر وقت السوق
+    if not is_market_open():
+        et = __import__("pytz").timezone("America/New_York")
+        now = __import__("datetime").datetime.now(et)
+        print(f"⏸ السوق مغلق — {now.strftime('%A %H:%M')} ET")
+        return
+
     print(f"\n⏰ {time.strftime('%H:%M:%S')} — بدء الفحص")
     total = 0
 
