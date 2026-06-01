@@ -248,80 +248,126 @@ def find_trendline(df, n=30, tol=0.005):
 
 def get_role_reversal(df, tf):
     """
-    تبادل الأدوار الصحيح:
-    - اخترق المستوى
-    - ابتعد عنه 5%+ وظل فوقه لـ 3 شمعات على الأقل (سلوك اتجاه حقيقي)
-    - بعدين رجع وأغلق قريب منه (تصحيح/اختبار)
+    تبادل الأدوار — 3 مراحل:
+
+    المرحلة ① اختراق تاريخي:
+      - في نافذة [-60:-20]: السعر كان تحت المستوى ثم اخترقه وصعد 5%+
+      - ظل فوق المستوى 5 شمعات على الأقل (تأكيد الاتجاه)
+
+    المرحلة ② تصحيح:
+      - في نافذة [-20:-1]: السعر نزل من القمة باتجاه المستوى
+      - ما كسر المستوى للأسفل (لا يزال فوقه)
+
+    المرحلة ③ إعادة الاختبار (الشمعة الحالية):
+      - C[t-1] > R  (الشمعة السابقة فوق المستوى)
+      - L[t]  ≤ R  (ظل الشمعة الحالية لمس المستوى)
+      - C[t]  > R  (الإغلاق فوق المستوى = ارتداد ناجح)
     """
     closes = df["Close"].squeeze()
     highs  = df["High"].squeeze()
     lows   = df["Low"].squeeze()
     n = len(closes)
-    if n < 40: return []
+    if n < 65: return []
 
-    c0      = float(closes.iloc[-1])
+    c_curr = float(closes.iloc[-1])
+    c_prev = float(closes.iloc[-2])
+    h_curr = float(highs.iloc[-1])
+    l_curr = float(lows.iloc[-1])
+
     results = []
 
     for level_type, level_price in find_key_levels(df):
-        entry_margin  = level_price * 0.008  # هامش الاختراق
-        min_move      = level_price * 0.05   # 5% ابتعاد بعد الاختراق
-        return_margin = level_price * 0.012  # نطاق الرجوع للمستوى (±1.2%)
-        min_candles_above = 3                # لازم يظل فوق/تحت المستوى 3 شمعات على الأقل
+        tol      = level_price * 0.005   # تسامح ±0.5%
+        min_move = level_price * 0.05    # 5% ابتعاد بعد الاختراق
 
         if level_type == "resistance":
-            # ابحث في نافذة [-50 : -1] عن نمط: اختراق ← ابتعاد ← رجوع
-            broke_idx   = None   # أول شمعة فوق المستوى
-            peak_price  = 0.0    # أعلى سعر بعد الاختراق
-            candles_above = 0    # عدد الشمعات فوق المستوى
+            R = level_price
 
-            for i in range(-50, -1):
+            # ── المرحلة ① اختراق تاريخي في نافذة [-60:-20]
+            broke_above    = False
+            peak_price     = 0.0
+            candles_above  = 0
+            for i in range(-60, -20):
                 ci = float(closes.iloc[i])
                 hi = float(highs.iloc[i])
-                if ci > level_price + entry_margin:
-                    if broke_idx is None:
-                        broke_idx = i
+                if ci > R + tol:
+                    broke_above = True
+                if broke_above:
                     candles_above += 1
                     if hi > peak_price:
                         peak_price = hi
 
-            # الشروط:
-            # ① اخترق المستوى فعلاً
-            # ② ظل فوقه 3+ شمعات (مش شمعة وحدة)
-            # ③ وصل 5%+ فوق المستوى (ابتعاد حقيقي)
-            # ④ الآن السعر رجع قريب من المستوى (تصحيح/اختبار)
-            # ⑤ الشمعة الأخيرة مش فوق المستوى بقوة (يعني فعلاً نزل)
-            if (broke_idx is not None
-                    and candles_above >= min_candles_above
-                    and peak_price >= level_price + min_move
-                    and abs(c0 - level_price) <= return_margin
-                    and c0 >= level_price * 0.99):   # ما نزل تحت المستوى بكثير
-                results.append(("role_reversal","bull", level_price, c0, tf))
+            if not broke_above: continue
+            if candles_above < 5: continue           # لازم يظل فوقه 5+ شمعات
+            if peak_price < R + min_move: continue   # لازم يبتعد 5%+
+
+            # ── المرحلة ② تصحيح في نافذة [-20:-1]
+            # السعر نزل من القمة لكن ما كسر المستوى
+            correction_started = False
+            broke_down         = False
+            for i in range(-20, -1):
+                ci = float(closes.iloc[i])
+                if ci < peak_price * 0.98:   # بدأ ينزل من القمة
+                    correction_started = True
+                if ci < R - tol:             # كسر المستوى = مش تبادل أدوار
+                    broke_down = True
+                    break
+
+            if not correction_started: continue  # ما فيه تصحيح
+            if broke_down: continue              # كسر المستوى = إشارة خاطئة
+
+            # ── المرحلة ③ إعادة الاختبار (الشمعة الحالية)
+            # C[t-1] > R  و  L[t] ≤ R+tol  و  C[t] > R
+            if (c_prev > R
+                    and l_curr <= R + tol
+                    and c_curr > R):
+                results.append(("role_reversal", "bull", R, c_curr, tf))
 
         elif level_type == "support":
-            broke_idx     = None
-            trough_price  = float('inf')
-            candles_below = 0
+            S = level_price
 
-            for i in range(-50, -1):
+            # ── المرحلة ① كسر تاريخي في نافذة [-60:-20]
+            broke_below    = False
+            trough_price   = float("inf")
+            candles_below  = 0
+            for i in range(-60, -20):
                 ci = float(closes.iloc[i])
                 li = float(lows.iloc[i])
-                if ci < level_price - entry_margin:
-                    if broke_idx is None:
-                        broke_idx = i
+                if ci < S - tol:
+                    broke_below = True
+                if broke_below:
                     candles_below += 1
                     if li < trough_price:
                         trough_price = li
 
-            if (broke_idx is not None
-                    and candles_below >= min_candles_above
-                    and trough_price <= level_price - min_move
-                    and abs(c0 - level_price) <= return_margin
-                    and c0 <= level_price * 1.01):
-                results.append(("role_reversal","bear", level_price, c0, tf))
+            if not broke_below: continue
+            if candles_below < 5: continue
+            if trough_price > S - min_move: continue
+
+            # ── المرحلة ② تصحيح (ارتداد من القاع باتجاه المستوى)
+            bounce_started = False
+            broke_up       = False
+            for i in range(-20, -1):
+                ci = float(closes.iloc[i])
+                if ci > trough_price * 1.02:
+                    bounce_started = True
+                if ci > S + tol:
+                    broke_up = True
+                    break
+
+            if not bounce_started: continue
+            if broke_up: continue
+
+            # ── المرحلة ③ إعادة الاختبار
+            # C[t-1] < S  و  H[t] ≥ S-tol  و  C[t] < S
+            if (c_prev < S
+                    and h_curr >= S - tol
+                    and c_curr < S):
+                results.append(("role_reversal", "bear", S, c_curr, tf))
 
     return results[:1]
 
-# ═══════════════════════════════════════════════
+
 # ② اختراق/كسر بزخم عالٍ
 # ═══════════════════════════════════════════════
 
