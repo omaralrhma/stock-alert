@@ -15,65 +15,91 @@ CHAT_IDS = [c.strip() for c in _chats.split(",") if c.strip()]
 # ── وضع التشغيل: --once = فحص واحد ثم يخرج (مناسب لـ GitHub Actions)
 RUN_ONCE = "--once" in sys.argv
 
-# ═══════════════════════════════════════════════
-# أسهم حلال فقط — محذوف: بنوك، تأمين، كحول، تبغ، أسلحة
-# ═══════════════════════════════════════════════
 STOCKS = {
-    # ── تكنولوجيا ──
+    # ── تكنولوجيا / ميجاكاب
     "AAPL":"💻 تكنولوجيا","MSFT":"💻 تكنولوجيا","NVDA":"💻 تكنولوجيا",
-    "GOOGL":"💻 تكنولوجيا","AMZN":"💻 تكنولوجيا","TSLA":"💻 تكنولوجيا",
-    "AMD":"💻 تكنولوجيا","INTC":"💻 تكنولوجيا","CRM":"💻 تكنولوجيا",
-    "ORCL":"💻 تكنولوجيا","ADBE":"💻 تكنولوجيا","QCOM":"💻 تكنولوجيا",
-    "TXN":"💻 تكنولوجيا","AMAT":"💻 تكنولوجيا","MU":"💻 تكنولوجيا",
-    "LRCX":"💻 تكنولوجيا","KLAC":"💻 تكنولوجيا","SNPS":"💻 تكنولوجيا",
-    "CDNS":"💻 تكنولوجيا","PANW":"💻 تكنولوجيا","CRWD":"💻 تكنولوجيا",
-    "ZS":"💻 تكنولوجيا","FTNT":"💻 تكنولوجيا","NET":"💻 تكنولوجيا",
-    "SNOW":"💻 تكنولوجيا","DDOG":"💻 تكنولوجيا","MDB":"💻 تكنولوجيا",
-    "TEAM":"💻 تكنولوجيا","NOW":"💻 تكنولوجيا","SHOP":"💻 تكنولوجيا",
-    "PLTR":"💻 تكنولوجيا","AVGO":"💻 تكنولوجيا","MRVL":"💻 تكنولوجيا",
-    "ARM":"💻 تكنولوجيا","SMCI":"💻 تكنولوجيا","UBER":"💻 تكنولوجيا",
-    "ABNB":"💻 تكنولوجيا","DASH":"💻 تكنولوجيا","RBLX":"💻 تكنولوجيا",
-    "U":"💻 تكنولوجيا","GTLB":"💻 تكنولوجيا","HUBS":"💻 تكنولوجيا",
-
-    # ── صحة وأدوية (بدون كحول أو تبغ) ──
+    "GOOGL":"💻 تكنولوجيا","AMZN":"💻 تكنولوجيا","META":"💻 تكنولوجيا",
+    "TSLA":"💻 تكنولوجيا","AMD":"💻 تكنولوجيا","INTC":"💻 تكنولوجيا",
+    "CRM":"💻 تكنولوجيا","ORCL":"💻 تكنولوجيا","ADBE":"💻 تكنولوجيا",
+    "QCOM":"💻 تكنولوجيا","TXN":"💻 تكنولوجيا","AMAT":"💻 تكنولوجيا",
+    "MU":"💻 تكنولوجيا","LRCX":"💻 تكنولوجيا","KLAC":"💻 تكنولوجيا",
+    "SNPS":"💻 تكنولوجيا","CDNS":"💻 تكنولوجيا","PANW":"💻 تكنولوجيا",
+    "CRWD":"💻 تكنولوجيا","ZS":"💻 تكنولوجيا","FTNT":"💻 تكنولوجيا",
+    "NET":"💻 تكنولوجيا","SNOW":"💻 تكنولوجيا","DDOG":"💻 تكنولوجيا",
+    "MDB":"💻 تكنولوجيا","TEAM":"💻 تكنولوجيا","NOW":"💻 تكنولوجيا",
+    "SHOP":"💻 تكنولوجيا","PLTR":"💻 تكنولوجيا","AVGO":"💻 تكنولوجيا",
+    "MRVL":"💻 تكنولوجيا","ARM":"💻 تكنولوجيا","SMCI":"💻 تكنولوجيا",
+    "UBER":"💻 تكنولوجيا","ABNB":"💻 تكنولوجيا","DASH":"💻 تكنولوجيا",
+    "RBLX":"💻 تكنولوجيا","U":"💻 تكنولوجيا","HUBS":"💻 تكنولوجيا",
+    "GTLB":"💻 تكنولوجيا","BILL":"💻 تكنولوجيا","TWLO":"💻 تكنولوجيا",
+    "ZM":"💻 تكنولوجيا","DOCU":"💻 تكنولوجيا","BOX":"💻 تكنولوجيا",
+    "DBX":"💻 تكنولوجيا","PATH":"💻 تكنولوجيا","AI":"💻 تكنولوجيا",
+    "BBAI":"💻 تكنولوجيا","SOUN":"💻 تكنولوجيا","IONQ":"💻 تكنولوجيا",
+    "RGTI":"💻 تكنولوجيا","QBTS":"💻 تكنولوجيا","QUBT":"💻 تكنولوجيا",
+    "RXRX":"💻 تكنولوجيا","ACHR":"💻 تكنولوجيا","JOBY":"💻 تكنولوجيا",
+    "HOOD":"💻 تكنولوجيا","RDDT":"💻 تكنولوجيا","AFRM":"💻 تكنولوجيا",
+    "SOFI":"💻 تكنولوجيا","UPST":"💻 تكنولوجيا","LMND":"💻 تكنولوجيا",
+    # ── أوبشن عالي التداول
+    "SPY":"📊 مؤشر","QQQ":"📊 مؤشر","IWM":"📊 مؤشر","DIA":"📊 مؤشر",
+    "XLK":"📊 مؤشر","XLF":"📊 مؤشر","XLE":"📊 مؤشر","XLV":"📊 مؤشر",
+    "XLI":"📊 مؤشر","XLP":"📊 مؤشر","XLU":"📊 مؤشر","XLB":"📊 مؤشر",
+    "XLRE":"📊 مؤشر","XLC":"📊 مؤشر","XLY":"📊 مؤشر",
+    "GLD":"📊 مؤشر","SLV":"📊 مؤشر","GDX":"📊 مؤشر","GDXJ":"📊 مؤشر",
+    "USO":"📊 مؤشر","UNG":"📊 مؤشر","TLT":"📊 مؤشر","HYG":"📊 مؤشر",
+    "EEM":"📊 مؤشر","FXI":"📊 مؤشر","KWEB":"📊 مؤشر","ARKK":"📊 مؤشر",
+    "VIX":"📊 مؤشر","UVXY":"📊 مؤشر","SQQQ":"📊 مؤشر","TQQQ":"📊 مؤشر",
+    "SPXU":"📊 مؤشر","SPXL":"📊 مؤشر","SOXL":"📊 مؤشر","SOXS":"📊 مؤشر",
+    # ── صحة
     "JNJ":"🏥 صحة","PFE":"🏥 صحة","MRK":"🏥 صحة","ABBV":"🏥 صحة",
     "LLY":"🏥 صحة","BMY":"🏥 صحة","AMGN":"🏥 صحة","GILD":"🏥 صحة",
     "VRTX":"🏥 صحة","REGN":"🏥 صحة","MRNA":"🏥 صحة","TMO":"🏥 صحة",
     "DHR":"🏥 صحة","ABT":"🏥 صحة","MDT":"🏥 صحة","ISRG":"🏥 صحة",
     "DXCM":"🏥 صحة","IDXX":"🏥 صحة","BSX":"🏥 صحة","EW":"🏥 صحة",
-    "ZBH":"🏥 صحة","PODD":"🏥 صحة","INSP":"🏥 صحة","NTRA":"🏥 صحة",
-
-    # ── طاقة (نفط وغاز وطاقة متجددة) ──
+    "BIIB":"🏥 صحة","ILMN":"🏥 صحة","IQV":"🏥 صحة","CNC":"🏥 صحة",
+    "CVS":"🏥 صحة","CI":"🏥 صحة","HUM":"🏥 صحة","UNH":"🏥 صحة",
+    "NVAX":"🏥 صحة","BNTX":"🏥 صحة","TDOC":"🏥 صحة","HIMS":"🏥 صحة",
+    "NTRA":"🏥 صحة","INSP":"🏥 صحة","PODD":"🏥 صحة","NVCR":"🏥 صحة",
+    # ── طاقة
     "XOM":"⛽ طاقة","CVX":"⛽ طاقة","COP":"⛽ طاقة","EOG":"⛽ طاقة",
     "DVN":"⛽ طاقة","MPC":"⛽ طاقة","VLO":"⛽ طاقة","OXY":"⛽ طاقة",
-    "HAL":"⛽ طاقة","SLB":"⛽ طاقة","HES":"⛽ طاقة",
-    "ENPH":"🌱 طاقة متجددة","FSLR":"🌱 طاقة متجددة","RUN":"🌱 طاقة متجددة",
-    "BE":"🌱 طاقة متجددة","PLUG":"🌱 طاقة متجددة","SEDG":"🌱 طاقة متجددة",
-
-    # ── استهلاكي حلال (بدون كحول وتبغ) ──
+    "HAL":"⛽ طاقة","SLB":"⛽ طاقة","HES":"⛽ طاقة","PSX":"⛽ طاقة",
+    "PXD":"⛽ طاقة","APA":"⛽ طاقة","MRO":"⛽ طاقة","FANG":"⛽ طاقة",
+    "ENPH":"🌱 متجددة","FSLR":"🌱 متجددة","RUN":"🌱 متجددة",
+    "BE":"🌱 متجددة","PLUG":"🌱 متجددة","SEDG":"🌱 متجددة",
+    # ── استهلاكي حلال
     "WMT":"🛒 استهلاكي","TGT":"🛒 استهلاكي","COST":"🛒 استهلاكي",
     "MCD":"🛒 استهلاكي","SBUX":"🛒 استهلاكي","CMG":"🛒 استهلاكي",
     "NKE":"🛒 استهلاكي","LULU":"🛒 استهلاكي","MNST":"🛒 استهلاكي",
     "EL":"🛒 استهلاكي","ULTA":"🛒 استهلاكي","ONON":"🛒 استهلاكي",
     "SKX":"🛒 استهلاكي","DECK":"🛒 استهلاكي","RH":"🛒 استهلاكي",
-
-    # ── صناعي (بدون أسلحة) ──
+    "ROST":"🛒 استهلاكي","TJX":"🛒 استهلاكي","DG":"🛒 استهلاكي",
+    "DLTR":"🛒 استهلاكي","BBY":"🛒 استهلاكي","HD":"🛒 استهلاكي",
+    "LOW":"🛒 استهلاكي","ETSY":"🛒 استهلاكي","W":"🛒 استهلاكي",
+    # ── صناعي
     "CAT":"🏭 صناعي","DE":"🏭 صناعي","UPS":"🏭 صناعي",
     "FDX":"🏭 صناعي","HON":"🏭 صناعي","GE":"🏭 صناعي",
     "EMR":"🏭 صناعي","ETN":"🏭 صناعي","ROK":"🏭 صناعي",
     "PH":"🏭 صناعي","GNRC":"🏭 صناعي","XYL":"🏭 صناعي",
-
-    # ── اتصالات ──
+    "DAL":"🏭 صناعي","UAL":"🏭 صناعي","AAL":"🏭 صناعي",
+    "LUV":"🏭 صناعي","SAVE":"🏭 صناعي","ALK":"🏭 صناعي",
+    "CCL":"🏭 صناعي","RCL":"🏭 صناعي","NCLH":"🏭 صناعي",
+    # ── اتصالات وميديا
     "TMUS":"📡 اتصالات","NFLX":"📡 اتصالات","DIS":"📡 اتصالات",
     "WBD":"📡 اتصالات","PARA":"📡 اتصالات","SPOT":"📡 اتصالات",
-
-    # ── مواد خام ──
+    "TTWO":"📡 اتصالات","EA":"📡 اتصالات","ATVI":"📡 اتصالات",
+    # ── مواد
     "NEM":"⛏ مواد","FCX":"⛏ مواد","ALB":"⛏ مواد","MP":"⛏ مواد",
-    "AA":"⛏ مواد","X":"⛏ مواد","CLF":"⛏ مواد",
-
-    # ── مؤشرات وذهب ──
-    "SPY":"📊 مؤشر","QQQ":"📊 مؤشر","IWM":"📊 مؤشر",
-    "XLK":"📊 مؤشر","XLE":"📊 مؤشر","GLD":"📊 مؤشر","SLV":"📊 مؤشر",
+    "AA":"⛏ مواد","X":"⛏ مواد","CLF":"⛏ مواد","VALE":"⛏ مواد",
+    "RIO":"⛏ مواد","BHP":"⛏ مواد","GOLD":"⛏ مواد","KGC":"⛏ مواد",
+    # ── سيارات وEV
+    "RIVN":"🚗 سيارات","LCID":"🚗 سيارات","NIO":"🚗 سيارات",
+    "XPEV":"🚗 سيارات","LI":"🚗 سيارات","F":"🚗 سيارات","GM":"🚗 سيارات",
+    # ── عقارات
+    "PLD":"🏢 عقارات","O":"🏢 عقارات","SPG":"🏢 عقارات",
+    "AMT":"🏢 عقارات","EQIX":"🏢 عقارات","DLR":"🏢 عقارات",
+    # ── عملات مشفرة ذات صلة
+    "COIN":"🪙 كريبتو","MSTR":"🪙 كريبتو","MARA":"🪙 كريبتو",
+    "RIOT":"🪙 كريبتو","HUT":"🪙 كريبتو","CLSK":"🪙 كريبتو",
 }
 
 
@@ -827,6 +853,103 @@ def msg_strategy(sym, sector, sig):
         f"⑤ Stochastic 30د: {st_lbl}"
     )
 
+
+# ═══════════════════════════════════════════════
+# إشعار تبادل الأدوار + Stochastic
+# ═══════════════════════════════════════════════
+
+def get_rr_stoch_signal(df, tf):
+    """
+    إشعار مدمج: تبادل أدوار + Stochastic
+
+    تبادل أدوار (إيجابي):
+      C[t-1] > R  و  L[t] <= R  و  C[t] > R
+
+    تبادل أدوار (سلبي):
+      C[t-1] < S  و  H[t] >= S  و  C[t] < S
+
+    Stochastic (30, K=5, D=5):
+      صعودي: %K يتقاطع فوق %D وكلاهما تحت 50
+      هبوطي: %K يتقاطع تحت %D وكلاهما فوق 50
+
+    النتيجة:
+      إذا تحقق التبادل + Stochastic = إشارة كاملة ✅✅
+      إذا تحقق التبادل فقط           = إشارة جزئية ⚠️ (تحقق شرط واحد)
+    """
+    closes = df["Close"].squeeze()
+    highs  = df["High"].squeeze()
+    lows   = df["Low"].squeeze()
+    if len(closes) < 50: return []
+
+    c_curr = float(closes.iloc[-1])
+    c_prev = float(closes.iloc[-2])
+    h_curr = float(highs.iloc[-1])
+    l_curr = float(lows.iloc[-1])
+
+    # ── Stochastic
+    k_line, d_line = calc_stoch(closes, highs, lows, k_period=30, smooth_k=5, smooth_d=5)
+    if len(k_line.dropna()) < 3: return []
+    k_curr = float(k_line.iloc[-1])
+    k_prev = float(k_line.iloc[-2])
+    d_curr = float(d_line.iloc[-1])
+    d_prev = float(d_line.iloc[-2])
+    stoch_bull = (k_prev < d_prev and k_curr > d_curr and k_curr < 50 and d_curr < 50)
+    stoch_bear = (k_prev > d_prev and k_curr < d_curr and k_curr > 50 and d_curr > 50)
+
+    results = []
+    tol = c_curr * 0.005  # تسامح ±0.5%
+
+    for level_type, level_price in find_key_levels(df):
+        if level_type == "resistance":
+            R = level_price
+            rr_bull = (c_prev > R and l_curr <= R + tol and c_curr > R)
+            if rr_bull:
+                full = stoch_bull  # تحقق الشرطين
+                results.append(("rr_stoch", "bull", R, c_curr, tf, full, k_curr, d_curr))
+
+        elif level_type == "support":
+            S = level_price
+            rr_bear = (c_prev < S and h_curr >= S - tol and c_curr < S)
+            if rr_bear:
+                full = stoch_bear
+                results.append(("rr_stoch", "bear", S, c_curr, tf, full, k_curr, d_curr))
+
+    return results[:1]
+
+
+def msg_rr_stoch(sym, sector, sig):
+    _, direction, level, price, tf, full, k, d = sig
+    if direction == "bull":
+        if full:
+            header = f"✅✅ <b>إشارة كاملة CALL — {sym}</b>"
+            status = "🟢 تبادل أدوار + Stochastic صعودي"
+            stoch  = f"🟢 Stochastic تقاطع صعودي ({k:.1f}/{d:.1f}) تحت 50"
+        else:
+            header = f"⚠️ <b>تبادل أدوار — {sym}</b>"
+            status = "🟢 تبادل أدوار صعودي — تحقق شرط واحد"
+            stoch  = f"⏳ Stochastic لم يتقاطع بعد ({k:.1f}/{d:.1f})"
+        rr_txt = f"المقاومة تحوّلت دعماً عند <b>${level:.2f}</b>"
+    else:
+        if full:
+            header = f"✅✅ <b>إشارة كاملة PUT — {sym}</b>"
+            status = "🔴 تبادل أدوار + Stochastic هبوطي"
+            stoch  = f"🔴 Stochastic تقاطع هبوطي ({k:.1f}/{d:.1f}) فوق 50"
+        else:
+            header = f"⚠️ <b>تبادل أدوار — {sym}</b>"
+            status = "🔴 تبادل أدوار هبوطي — تحقق شرط واحد"
+            stoch  = f"⏳ Stochastic لم يتقاطع بعد ({k:.1f}/{d:.1f})"
+        rr_txt = f"الدعم تحوّل مقاومة عند <b>${level:.2f}</b>"
+
+    return (
+        f"{header}\n"
+        f"🏷 {sector}\n"
+        f"📐 الفريم: <b>{tf}</b>\n"
+        f"الحالة: {status}\n"
+        f"🔄 {rr_txt}\n"
+        f"📊 {stoch}\n"
+        f"💰 السعر: <b>${price:.2f}</b>"
+    )
+
 # ═══════════════════════════════════════════════
 # الفحص الرئيسي
 # ═══════════════════════════════════════════════
@@ -836,14 +959,31 @@ def check_all():
     total = 0
 
     # الفريمات لكل نوع تحليل
-    tf_role_mom = [("1h","ساعة"), ("4h","4 ساعات"), ("1d","يومي")]
-    tf_ma       = [("1d","يومي"), ("1wk","أسبوعي")]
-    tf_trend    = [("1d","يومي")]
-    tf_cluster  = [("1d","يومي")]
+    tf_role_mom  = [("1h","ساعة"), ("4h","4 ساعات"), ("1d","يومي")]
+    tf_ma        = [("1d","يومي"), ("1wk","أسبوعي")]
+    tf_trend     = [("1d","يومي")]
+    tf_rr_stoch  = [("30m","30 دقيقة"), ("1h","ساعة"), ("4h","4 ساعات"), ("1d","يومي"), ("1wk","أسبوعي")]
 
     for sym, sector in STOCKS.items():
         messages_to_send = []
         try:
+            # ── فلتر: السهم لازم فوق MA50 و MA100 على اليومي
+            try:
+                df_f = get_data(sym, "1d")
+                if df_f.empty or len(df_f) < 105:
+                    print(f"  — {sym}: بيانات غير كافية")
+                    continue
+                c_f     = df_f["Close"].squeeze()
+                ma50_f  = float(c_f.rolling(50).mean().iloc[-1])
+                ma100_f = float(c_f.rolling(100).mean().iloc[-1])
+                price_f = float(c_f.iloc[-1])
+                if price_f < ma50_f or price_f < ma100_f:
+                    print(f"  — {sym}: تحت MA50/MA100، تخطي")
+                    continue
+            except Exception as fe:
+                print(f"  — {sym}: خطأ فلتر {fe}")
+                continue
+
             # ① تبادل الأدوار — ساعة / 4ساعات / يومي
             for interval, tf_name in tf_role_mom:
                 df = get_data(sym, interval)
@@ -872,16 +1012,18 @@ def check_all():
                 for sig in get_trendline_signals(df, tf_name):
                     messages_to_send.append(msg_trendline(sym, sector, sig))
 
-            # ⑤ كلاستر فني — يومي فقط
-            for interval, tf_name in tf_cluster:
-                df = get_data(sym, interval)
-                if df.empty or len(df) < 110: continue
-                for sig in get_cluster_zone(df, tf_name):
-                    messages_to_send.append(msg_cluster(sym, sector, sig))
+            # ⑤ كلاستر — محذوف، استُبدل بفلتر MA50+MA100
 
             # ⑥ استراتيجية (RSI + SMA200 + OBV + ROC + Stochastic)
             for sig in get_strategy_signal(sym):
                 messages_to_send.append(msg_strategy(sym, sector, sig))
+
+            # ⑦ تبادل أدوار + Stochastic
+            for interval, tf_name in tf_rr_stoch:
+                df = get_data(sym, interval)
+                if df.empty or len(df) < 50: continue
+                for sig in get_rr_stoch_signal(df, tf_name):
+                    messages_to_send.append(msg_rr_stoch(sym, sector, sig))
 
             # إرسال كل رسالة بشكل منفصل
             if messages_to_send:
