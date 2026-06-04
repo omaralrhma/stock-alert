@@ -577,121 +577,229 @@ def get_cluster_zone(df, tf):
 # ⑥ استراتيجية الدخول (RSI + SMA200 + OBV + ROC + Stochastic)
 # ═══════════════════════════════════════════════
 
+def calc_rsi(series, period=14):
+    delta = series.diff()
+    gain  = delta.clip(lower=0).rolling(period).mean()
+    loss  = (-delta.clip(upper=0)).rolling(period).mean()
+    rs    = gain / loss.replace(0, float("inf"))
+    return 100 - (100 / (1 + rs))
+
+def calc_obv(closes, volumes):
+    obv = [0.0]
+    for i in range(1, len(closes)):
+        c, pc, v = float(closes.iloc[i]), float(closes.iloc[i-1]), float(volumes.iloc[i])
+        obv.append(obv[-1] + (v if c > pc else -v if c < pc else 0))
+    return obv
+
+def calc_stoch(closes, highs, lows, k_period=30, smooth_k=5, smooth_d=5):
+    low_min  = lows.rolling(k_period).min()
+    high_max = highs.rolling(k_period).max()
+    raw_k    = 100 * (closes - low_min) / (high_max - low_min + 1e-10)
+    k_line   = raw_k.rolling(smooth_k).mean()
+    d_line   = k_line.rolling(smooth_d).mean()
+    return k_line, d_line
+
 def get_strategy_signal(sym):
     """
-    شروط CALL (AND كلها):
-      ① RSI(14) يومي > 55
-      ② السعر فوق SMA(200) يومي
-      ③ OBV يومي فوق أعلى قمة OBV سابقة (breakout)
-      ④ ROC% 30د (5 أيام) > 0
+    نفس الشروط على 4 فريمات مستقلة: 15د | 30د | ساعة | يومي
+    كل فريم يعطي إشارة مستقلة.
 
-    شروط PUT (AND كلها):
-      ① RSI(14) يومي < 45
-      ② السعر تحت SMA(200) يومي
-      ③ OBV يومي تحت أدنى قاع OBV سابق
-      ④ ROC% 30د (5 أيام) < -8  (نسبة سلبية)
-
-    شرط الدخول (OR — يضاف للفلتر):
-      Stochastic(30, K=5, D=5) على 30د
-      CALL: %K يتقاطع فوق %D وكلاهما تحت 50
-      PUT:  %K يتقاطع تحت %D وكلاهما فوق 50
+    الشروط (AND كلها على نفس الفريم):
+      ① RSI(14) > 55 للـ CALL  /  < 45 للـ PUT
+      ② السعر فوق/تحت SMA(200) على نفس الفريم
+      ③ OBV يخترق قمته السابقة (CALL) / يكسر قاعه (PUT)
+      ④ ROC% (5 أيام بوحدة الفريم) > 0 للـ CALL  /  < -8 للـ PUT
+      ⑤ Stochastic(30,5,5): تقاطع صعودي تحت 50 (CALL) / هبوطي فوق 50 (PUT)
     """
-    try:
-        # ── جلب البيانات
-        df_1d  = yf.download(sym, period="1y",  interval="1d",  progress=False, auto_adjust=True)
-        df_30m = yf.download(sym, period="60d", interval="30m", progress=False, auto_adjust=True)
-        df_1d.dropna(inplace=True)
-        df_30m.dropna(inplace=True)
+    # إعدادات كل فريم: (interval, period_yf, tf_name, roc_candles, sma_period)
+    timeframes = [
+        ("15m", "60d",  "15 دقيقة", 96,  200),   # 96 شمعة 15د ≈ 1 يوم تداول
+        ("30m", "60d",  "30 دقيقة", 80,  200),   # 80 شمعة 30د ≈ 5 أيام
+        ("1h",  "60d",  "ساعة",     40,  200),   # 40 شمعة ساعة ≈ 5 أيام
+        ("1d",  "2y",   "يومي",     5,   200),   # 5 شمعات يومية = أسبوع
+    ]
 
-        if len(df_1d) < 210 or len(df_30m) < 50:
-            return []
+    results = []
 
-        closes_1d  = df_1d["Close"].squeeze()
-        volume_1d  = df_1d["Volume"].squeeze()
-        closes_30m = df_30m["Close"].squeeze()
-        highs_30m  = df_30m["High"].squeeze()
-        lows_30m   = df_30m["Low"].squeeze()
+    for interval, period, tf_name, roc_candles, sma_p in timeframes:
+        try:
+            df = yf.download(sym, period=period, interval=interval, progress=False, auto_adjust=True)
+            df.dropna(inplace=True)
+            if len(df) < sma_p + 20:
+                continue
 
-        # ── ① RSI يومي
-        delta = closes_1d.diff()
-        gain  = delta.clip(lower=0).rolling(14).mean()
-        loss  = (-delta.clip(upper=0)).rolling(14).mean()
-        rs    = gain / loss.replace(0, float("inf"))
-        rsi   = 100 - (100 / (1 + rs))
-        rsi_val = float(rsi.iloc[-1])
+            closes  = df["Close"].squeeze()
+            highs   = df["High"].squeeze()
+            lows    = df["Low"].squeeze()
+            volumes = df["Volume"].squeeze()
 
-        # ── ② SMA 200 يومي
-        sma200    = float(closes_1d.rolling(200).mean().iloc[-1])
-        price_1d  = float(closes_1d.iloc[-1])
+            # ① RSI
+            rsi_val = float(calc_rsi(closes).iloc[-1])
 
-        # ── ③ OBV يومي
-        obv = [0.0]
-        for i in range(1, len(closes_1d)):
-            c  = float(closes_1d.iloc[i])
-            pc = float(closes_1d.iloc[i-1])
-            v  = float(volume_1d.iloc[i])
-            obv.append(obv[-1] + (v if c > pc else -v if c < pc else 0))
-        obv_curr     = obv[-1]
-        obv_prev_max = max(obv[:-5])   # أعلى قمة OBV سابقة
-        obv_prev_min = min(obv[:-5])   # أدنى قاع OBV سابق
-        obv_breakout_bull = obv_curr > obv_prev_max
-        obv_breakout_bear = obv_curr < obv_prev_min
+            # ② SMA 200
+            sma_val   = float(closes.rolling(sma_p).mean().iloc[-1])
+            price_now = float(closes.iloc[-1])
 
-        # ── ④ ROC% على 30 دقيقة (5 أيام = ~80 شمعة 30د)
-        roc_period = 80
-        if len(closes_30m) > roc_period:
-            roc = (float(closes_30m.iloc[-1]) - float(closes_30m.iloc[-roc_period])) / float(closes_30m.iloc[-roc_period]) * 100
-        else:
-            return []
+            # ③ OBV
+            obv          = calc_obv(closes, volumes)
+            obv_curr     = obv[-1]
+            obv_prev_max = max(obv[:-5]) if len(obv) > 5 else obv_curr
+            obv_prev_min = min(obv[:-5]) if len(obv) > 5 else obv_curr
+            obv_bull = obv_curr > obv_prev_max
+            obv_bear = obv_curr < obv_prev_min
 
-        # ── ⑤ Stochastic على 30 دقيقة (period=30, K_smooth=5, D_smooth=5)
-        k_period = 30
-        low_min  = lows_30m.rolling(k_period).min()
-        high_max = highs_30m.rolling(k_period).max()
-        raw_k    = 100 * (closes_30m - low_min) / (high_max - low_min + 1e-10)
-        k_line   = raw_k.rolling(5).mean()    # Smooth K
-        d_line   = k_line.rolling(5).mean()   # Smooth D
+            # ④ ROC
+            if len(closes) > roc_candles:
+                roc = (price_now - float(closes.iloc[-roc_candles])) / float(closes.iloc[-roc_candles]) * 100
+            else:
+                continue
 
-        k_curr = float(k_line.iloc[-1])
-        k_prev = float(k_line.iloc[-2])
-        d_curr = float(d_line.iloc[-1])
-        d_prev = float(d_line.iloc[-2])
+            # ⑤ Stochastic
+            k_line, d_line = calc_stoch(closes, highs, lows)
+            k_curr = float(k_line.iloc[-1])
+            k_prev = float(k_line.iloc[-2])
+            d_curr = float(d_line.iloc[-1])
+            d_prev = float(d_line.iloc[-2])
+            stoch_bull = (k_prev < d_prev and k_curr > d_curr and k_curr < 50 and d_curr < 50)
+            stoch_bear = (k_prev > d_prev and k_curr < d_curr and k_curr > 50 and d_curr > 50)
 
-        # تقاطع %K فوق %D (ذيل ذهبي تحت 50)
-        stoch_cross_bull = (k_prev < d_prev and k_curr > d_curr and k_curr < 50 and d_curr < 50)
-        # تقاطع %K تحت %D (ذيل ميت فوق 50)
-        stoch_cross_bear = (k_prev > d_prev and k_curr < d_curr and k_curr > 50 and d_curr > 50)
+            # ── CALL
+            if (rsi_val > 55
+                    and price_now > sma_val
+                    and obv_bull
+                    and roc > 0
+                    and stoch_bull):
+                results.append(("strategy", "bull", rsi_val, sma_val, roc, k_curr, d_curr, price_now, tf_name))
 
-        price_30m = float(closes_30m.iloc[-1])
-        results   = []
+            # ── PUT
+            elif (rsi_val < 45
+                    and price_now < sma_val
+                    and obv_bear
+                    and roc < -8
+                    and stoch_bear):
+                results.append(("strategy", "bear", rsi_val, sma_val, roc, k_curr, d_curr, price_now, tf_name))
 
-        # ── CALL: كل الشروط الـ4 + تقاطع ستوكاستك
-        if (rsi_val > 55
-                and price_1d > sma200
-                and obv_breakout_bull
-                and roc > 0
-                and stoch_cross_bull):
-            results.append(("strategy", "bull", rsi_val, sma200, roc, k_curr, d_curr, price_30m))
+        except Exception as e:
+            print(f"    ⚠️ strategy {sym} {tf_name}: {e}")
+            continue
 
-        # ── PUT: كل الشروط الـ4 + تقاطع ستوكاستك
-        elif (rsi_val < 45
-                and price_1d < sma200
-                and obv_breakout_bear
-                and roc < -8
-                and stoch_cross_bear):
-            results.append(("strategy", "bear", rsi_val, sma200, roc, k_curr, d_curr, price_30m))
+    return results
 
-        return results
 
-    except Exception as e:
-        print(f"    ⚠️ strategy error {sym}: {e}")
-        return []
 
+SEPARATOR = "━━━━━━━━━━━━━━━━━━━━━━"
+
+def msg_role_reversal(sym, sector, sig):
+    _, direction, level, price, tf = sig
+    if direction == "bull":
+        header = f"🔄 <b>تبادل أدوار — {sym}</b>"
+        state  = "🟢 تحوّل إلى مستوى دعم"
+        lines  = "━━━ تحوّل لدعم ━━━"
+    else:
+        header = f"🔄 <b>تبادل أدوار — {sym}</b>"
+        state  = "🔴 تحوّل إلى مستوى مقاومة"
+        lines  = "▬▬▬ تحوّل لمقاومة ▬▬▬"
+    return (
+        f"{header}\n"
+        f"🏷 {sector}\n"
+        f"📐 الفريم: <b>{tf}</b>\n"
+        f"الحالة: {state}\n"
+        f"{lines}\n"
+        f"المستوى: <b>${level:.2f}</b>\n"
+        f"💰 السعر الحالي: <b>${price:.2f}</b>"
+    )
+
+def msg_momentum(sym, sector, sig):
+    _, direction, level, price, tf, vr, br = sig
+    if direction == "bull":
+        header  = f"🚀 🟢 <b>اختراق بزخم عالٍ — {sym}</b>"
+        event   = f"اختراق مقاومة قوية عند <b>${level:.2f}</b>"
+        vol_lbl = "⚡⚡ انفجاري" if vr >= 3 else "⚡ عالٍ جداً"
+        alert   = "⚠️⚠️⚠️ زخم صعودي قوي"
+    else:
+        header  = f"⚠️ 🔴 <b>كسر بزخم عالٍ — {sym}</b>"
+        event   = f"كسر دعم قوي عند <b>${level:.2f}</b>"
+        vol_lbl = "💣💣 بيوع مكثفة" if vr >= 3 else "💣 بيوع عالية"
+        alert   = "⚠️⚠️⚠️ ضغط بيعي شديد"
+    return (
+        f"{header}\n"
+        f"🏷 {sector}\n"
+        f"📐 الفريم: <b>{tf}</b>\n"
+        f"الحدث: {event}\n"
+        f"📊 حجم التداول: <b>{vol_lbl}</b> (x{vr:.1f})\n"
+        f"📏 حجم الجسم: x{br:.1f} عن المتوسط\n"
+        f"💰 السعر الحالي: <b>${price:.2f}</b>\n"
+        f"{alert}"
+    )
+
+def msg_ma(sym, sector, sig):
+    _, direction, ma_label, ma50_val, ma100_val, price, tf = sig
+    if direction == "bull":
+        header = f"📈 🟢 <b>تقاطع متوسطات إيجابي — {sym}</b>"
+        event  = "السعر يتجاوز MA 50 و MA 100 معاً ✅"
+        stars  = "✨✨ إشراق فني ✨✨"
+    else:
+        header = f"📉 🔴 <b>تقاطع متوسطات سلبي — {sym}</b>"
+        event  = "السعر يكسر ويهبط تحت MA 50 و MA 100 معاً ❌"
+        stars  = "🌑🌑 تراجع فني 🌑🌑"
+    return (
+        f"{header}\n"
+        f"🏷 {sector}\n"
+        f"📐 الفريم: <b>{tf}</b>\n"
+        f"الحدث: {event}\n"
+        f"📌 MA 50:  <b>${ma50_val:.2f}</b>\n"
+        f"📌 MA 100: <b>${ma100_val:.2f}</b>\n"
+        f"💰 السعر الحالي: <b>${price:.2f}</b>\n"
+        f"{stars}"
+    )
+
+def msg_trendline(sym, sector, sig):
+    _, direction, trendline_val, price, next_target, tf = sig
+    if direction == "bull":
+        header = f"↗️ 🟢 <b>اختراق ترند هابط — {sym}</b>"
+        status = f"السعر يخرج من المسار الهابط ↗️\nمستهدفاً المقاومة القادمة: <b>${next_target:.2f}</b>"
+        arrow  = "   ↗️ ↗️ ↗️"
+    else:
+        header = f"↘️ 🔴 <b>كسر ترند صاعد — {sym}</b>"
+        status = f"السعر يكسر خط الاتجاه الصاعد ↘️\nالحذر من تراجع إلى الدعم: <b>${next_target:.2f}</b>"
+        arrow  = "   ↘️ ↘️ ↘️"
+    return (
+        f"{header}\n"
+        f"🏷 {sector}\n"
+        f"📐 الفريم: <b>{tf}</b>\n"
+        f"{arrow}\n"
+        f"خط الترند عند: <b>${trendline_val:.2f}</b>\n"
+        f"{status}\n"
+        f"💰 السعر الحالي: <b>${price:.2f}</b>"
+    )
+
+def msg_cluster(sym, sector, sig):
+    _, direction, zone_low, zone_hi, components, price, tf = sig
+    if direction == "bull":
+        header   = f"🎯 🔲 <b>منطقة كلاستر فني — {sym}</b> 🔲"
+        expected = "🟢 ارتداد صاعد محتمل 🟢"
+        reaction = "⬆️ السعر يختبر قاع الكلاستر"
+    else:
+        header   = f"🎯 🔲 <b>منطقة كلاستر فني — {sym}</b> 🔲"
+        expected = "🔴 كسر وهبوط عنيف محتمل 🔴"
+        reaction = "⬇️ السعر يختبر سقف الكلاستر"
+    comp_str = " + ".join(components)
+    return (
+        f"{header}\n"
+        f"🏷 {sector}\n"
+        f"📐 الفريم: <b>{tf}</b>\n"
+        f"📍 نطاق الكلاستر:\n"
+        f"   من: <b>${zone_low:.2f}</b>  →  إلى: <b>${zone_hi:.2f}</b>\n"
+        f"🧩 المكونات: {comp_str}\n"
+        f"{reaction}\n"
+        f"💰 السعر الحالي: <b>${price:.2f}</b>\n"
+        f"الحالة المتوقعة: {expected}"
+    )
 
 def msg_strategy(sym, sector, sig):
-    _, direction, rsi_val, sma200, roc, k, d, price = sig
+    _, direction, rsi_val, sma200, roc, k, d, price, tf_name = sig
     if direction == "bull":
-        header  = f"🎯 🟢 <b>إشارة دخول CALL — {sym}</b>"
+        header  = f"🎯 🟢 <b>إشارة دخول CALL — {sym}</b>\n📐 الفريم: <b>{tf_name}</b>"
         action  = "📈 شراء / CALL"
         rsi_lbl = f"🟢 {rsi_val:.1f} (فوق 55)"
         sma_lbl = "🟢 السعر فوق SMA 200"
@@ -699,7 +807,7 @@ def msg_strategy(sym, sector, sig):
         obv_lbl = "🟢 OBV يخترق القمة السابقة"
         st_lbl  = f"🟢 Stochastic تقاطع صعودي ({k:.1f}/{d:.1f})"
     else:
-        header  = f"🎯 🔴 <b>إشارة دخول PUT — {sym}</b>"
+        header  = f"🎯 🔴 <b>إشارة دخول PUT — {sym}</b>\n📐 الفريم: <b>{tf_name}</b>"
         action  = "📉 بيع / PUT"
         rsi_lbl = f"🔴 {rsi_val:.1f} (تحت 45)"
         sma_lbl = "🔴 السعر تحت SMA 200"
