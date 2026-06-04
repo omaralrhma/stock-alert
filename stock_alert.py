@@ -934,158 +934,198 @@ def is_bearish_reversal(o, h, l, c):
 
 def get_rr_stoch_signal(df, tf):
     """
-    تبادل الأدوار الدقيق (Breakout & Retest) + Stochastic
+    Resistance → Support (Breakout & Retest) — State Machine — Pandas
 
-    المنطق:
-    ① تحديد قمة/قاع بارز (Pivot High/Low)
-    ② اختراق واضح: السعر يغلق فوق القمة (أو تحت القاع)
-    ③ انتظار إعادة الاختبار (3 إلى 20 شمعة):
-       - Low الشمعة يدخل المنطقة العازلة ±0.8% حول المستوى
-       - الإغلاق يبقى فوق المنطقة العازلة (ما ينكسر)
-    ④ تأكيد الارتداد:
-       - شمعة الاختبار أو التالية تكون انعكاسية صعودية
-    ⑤ Stochastic (اختياري — يرفع قوة الإشارة):
-       - تقاطع صعودي تحت 50 = إشارة كاملة ✅✅
-       - بدون Stochastic     = إشارة جزئية ⚠️
+    State 0: ابحث عن مستوى مقاومة (أعلى High في نافذة 20 شمعة)
+    State 1: اختراق — Close فوق res_level بـ 1%+ وثبت فوقه
+             إلغاء فوري إذا أغلق تحت res_level
+    State 2: Retest — Low دخل buffer zone [res_level, res_level*1.015]
+             والإغلاق فوق res_level
+             إلغاء فوري إذا أغلق تحت res_level
+    State 3: تأكيد — شمعة صاعدة (Close > Open) بعد الـ retest
+             ← إشارة حقيقية ✅
+
+    كل الحسابات نسب مئوية (logarithmic-friendly)
     """
     closes = df["Close"].squeeze()
     opens  = df["Open"].squeeze()
     highs  = df["High"].squeeze()
     lows   = df["Low"].squeeze()
     n = len(closes)
-    if n < RR_PIVOT_LOOKBACK * 2 + RR_MAX_RETEST_BARS + 5:
-        return []
+    if n < 50: return []
+
+    # ── إعدادات
+    PIVOT_WINDOW      = 20      # نافذة البحث عن المقاومة
+    BREAKOUT_MIN_PCT  = 0.01    # 1% فوق المستوى للاختراق
+    BUFFER_MAX_PCT    = 0.015   # 1.5% Buffer Zone فوق المستوى
+    MAX_RETEST_BARS   = 15      # أقصى شمعات انتظار الـ retest
+    MIN_BREAKOUT_BARS = 3       # أدنى شمعات فوق المستوى قبل الـ retest
 
     # ── Stochastic
     k_line, d_line = calc_stoch(closes, highs, lows, k_period=30, smooth_k=5, smooth_d=5)
-    if len(k_line.dropna()) < 3: return []
-    k_curr = float(k_line.iloc[-1])
-    k_prev = float(k_line.iloc[-2])
-    d_curr = float(d_line.iloc[-1])
-    d_prev = float(d_line.iloc[-2])
+    k_vals = k_line.values
+    d_vals = d_line.values
+    k_curr = float(k_vals[-1]) if not np.isnan(k_vals[-1]) else 50
+    k_prev = float(k_vals[-2]) if not np.isnan(k_vals[-2]) else 50
+    d_curr = float(d_vals[-1]) if not np.isnan(d_vals[-1]) else 50
+    d_prev = float(d_vals[-2]) if not np.isnan(d_vals[-2]) else 50
     stoch_bull = (k_prev < d_prev and k_curr > d_curr and k_curr < 50 and d_curr < 50)
     stoch_bear = (k_prev > d_prev and k_curr < d_curr and k_curr > 50 and d_curr > 50)
 
-    pivots  = find_pivot_highs_lows(df, lookback=RR_PIVOT_LOOKBACK)
+    c = closes.values
+    o = opens.values
+    h = highs.values
+    l = lows.values
+
     results = []
 
-    for ptype, plevel, pidx in pivots:
-        buf = plevel * RR_BUFFER_PCT  # المنطقة العازلة
+    # ── ابحث على نوافذ متحركة لإيجاد مستويات مقاومة
+    # نفحص آخر 200 شمعة فقط للكفاءة
+    scan_start = max(PIVOT_WINDOW, n - 200)
 
-        if ptype == "resistance":
-            # ── ② اختراق واضح: ابحث عن شمعة أغلقت فوق المستوى بعد الـ pivot
-            breakout_idx = None
-            for i in range(pidx + 1, n - 1):
-                if float(closes.iloc[i]) > plevel + buf:
+    for res_idx in range(scan_start, n - MIN_BREAKOUT_BARS - 2):
+        # ① مستوى المقاومة = أعلى High في نافذة [res_idx-PIVOT_WINDOW : res_idx]
+        window_start = max(0, res_idx - PIVOT_WINDOW)
+        res_level    = float(np.max(h[window_start:res_idx + 1]))
+
+        # ── State Machine
+        state         = 0
+        breakout_idx  = None
+        retest_high   = None  # High شمعة الـ retest
+
+        for i in range(res_idx + 1, n):
+            ci = float(c[i])
+            oi = float(o[i])
+            hi = float(h[i])
+            li = float(l[i])
+
+            # ── حساب المسافة النسبية من المستوى
+            dist_pct = (ci - res_level) / res_level  # موجب = فوق، سالب = تحت
+
+            if state == 0:
+                # State 0→1: اختراق واضح بـ 1%+
+                if dist_pct >= BREAKOUT_MIN_PCT:
+                    state        = 1
                     breakout_idx = i
+                # لو أغلق تحت المستوى لا يزال = استمر البحث
+                else:
+                    continue
+
+            elif state == 1:
+                bars_since = i - breakout_idx
+
+                # إلغاء فوري: أغلق تحت res_level
+                if ci < res_level:
+                    state = 0
+                    breakout_idx = None
                     break
-            if breakout_idx is None: continue
 
-            # ── ③ إعادة الاختبار: في نافذة [breakout+3 : breakout+20]
-            retest_found   = False
-            confirm_candle = False
-            retest_idx     = None
+                # انتهت المهلة
+                if bars_since > MAX_RETEST_BARS:
+                    state = 0
+                    break
 
-            search_start = breakout_idx + RR_MIN_BREAKOUT_BARS
-            search_end   = min(breakout_idx + RR_MAX_RETEST_BARS + 1, n - 1)
+                # انتظر MIN_BREAKOUT_BARS قبل الـ retest
+                if bars_since < MIN_BREAKOUT_BARS:
+                    continue
 
-            for i in range(search_start, search_end):
-                li = float(lows.iloc[i])
-                ci = float(closes.iloc[i])
-                oi = float(opens.iloc[i])
-                hi = float(highs.iloc[i])
+                # State 1→2: Low دخل الـ Buffer Zone
+                # buffer: [res_level, res_level * (1 + BUFFER_MAX_PCT)]
+                in_buffer = (li <= res_level * (1 + BUFFER_MAX_PCT) and
+                             li >= res_level * 0.999)
 
-                # الـ Low دخل المنطقة العازلة
-                if li <= plevel + buf:
-                    # الإغلاق بقي فوق الحد الأدنى للمنطقة
-                    if ci >= plevel - buf:
-                        retest_found = True
-                        retest_idx   = i
-                        # ④ تأكيد: شمعة الاختبار انعكاسية أو الشمعة التالية
-                        if is_bullish_reversal(oi, hi, li, ci):
-                            confirm_candle = True
-                        elif i + 1 < n:
-                            ni = i + 1
-                            if is_bullish_reversal(
-                                float(opens.iloc[ni]), float(highs.iloc[ni]),
-                                float(lows.iloc[ni]),  float(closes.iloc[ni])
-                            ):
-                                confirm_candle = True
+                if in_buffer:
+                    # إغلاق فوق res_level = retest ناجح
+                    if ci >= res_level:
+                        state       = 2
+                        retest_high = hi
+                    # إغلاق تحت res_level = إلغاء
+                    else:
+                        state = 0
                         break
 
-            # ── الشمعة الأخيرة هي شمعة الاختبار؟
-            if retest_idx is None:
-                # فحص الشمعة الحالية مباشرة
-                li = float(lows.iloc[-1])
-                ci = float(closes.iloc[-1])
-                oi = float(opens.iloc[-1])
-                hi = float(highs.iloc[-1])
-                if (breakout_idx < n - RR_MIN_BREAKOUT_BARS
-                        and li <= plevel + buf
-                        and ci >= plevel - buf):
-                    retest_found   = True
-                    confirm_candle = is_bullish_reversal(oi, hi, li, ci)
+            elif state == 2:
+                # إلغاء: أغلق تحت res_level
+                if ci < res_level:
+                    state = 0
+                    break
 
-            if retest_found and confirm_candle:
-                curr_c = float(closes.iloc[-1])
-                full   = stoch_bull
-                results.append(("rr_stoch", "bull", plevel, curr_c, tf, full, k_curr, d_curr))
+                # State 2→3: تأكيد الارتداد
+                # شمعة صاعدة + إغلاق فوق High شمعة الـ retest
+                if ci > oi and ci > retest_high:
+                    # ✅ إشارة كاملة — فقط إذا كانت آخر شمعة أو قريبة منها
+                    if i >= n - 3:  # الإشارة حديثة (آخر 3 شمعات)
+                        full = stoch_bull
+                        results.append((
+                            "rr_stoch", "bull",
+                            res_level, ci, tf,
+                            full, k_curr, d_curr
+                        ))
+                    state = 0
+                    break
 
-        elif ptype == "support":
-            # ── ② كسر واضح تحت المستوى
-            breakdown_idx = None
-            for i in range(pidx + 1, n - 1):
-                if float(closes.iloc[i]) < plevel - buf:
+    # ── نفس المنطق للـ Support→Resistance (هبوطي)
+    for sup_idx in range(scan_start, n - MIN_BREAKOUT_BARS - 2):
+        window_start = max(0, sup_idx - PIVOT_WINDOW)
+        sup_level    = float(np.min(l[window_start:sup_idx + 1]))
+
+        state        = 0
+        breakdown_idx = None
+        retest_low    = None
+
+        for i in range(sup_idx + 1, n):
+            ci = float(c[i])
+            oi = float(o[i])
+            hi = float(h[i])
+            li = float(l[i])
+
+            dist_pct = (sup_level - ci) / sup_level
+
+            if state == 0:
+                if dist_pct >= BREAKOUT_MIN_PCT:
+                    state         = 1
                     breakdown_idx = i
+                else:
+                    continue
+
+            elif state == 1:
+                bars_since = i - breakdown_idx
+                if ci > sup_level:
+                    state = 0
                     break
-            if breakdown_idx is None: continue
+                if bars_since > MAX_RETEST_BARS:
+                    state = 0
+                    break
+                if bars_since < MIN_BREAKOUT_BARS:
+                    continue
 
-            # ── ③ إعادة الاختبار
-            retest_found   = False
-            confirm_candle = False
-            retest_idx     = None
-
-            search_start = breakdown_idx + RR_MIN_BREAKOUT_BARS
-            search_end   = min(breakdown_idx + RR_MAX_RETEST_BARS + 1, n - 1)
-
-            for i in range(search_start, search_end):
-                hi = float(highs.iloc[i])
-                ci = float(closes.iloc[i])
-                oi = float(opens.iloc[i])
-                li = float(lows.iloc[i])
-
-                if hi >= plevel - buf:
-                    if ci <= plevel + buf:
-                        retest_found = True
-                        retest_idx   = i
-                        if is_bearish_reversal(oi, hi, li, ci):
-                            confirm_candle = True
-                        elif i + 1 < n:
-                            ni = i + 1
-                            if is_bearish_reversal(
-                                float(opens.iloc[ni]), float(highs.iloc[ni]),
-                                float(lows.iloc[ni]),  float(closes.iloc[ni])
-                            ):
-                                confirm_candle = True
+                in_buffer = (hi >= sup_level * (1 - BUFFER_MAX_PCT) and
+                             hi <= sup_level * 1.001)
+                if in_buffer:
+                    if ci <= sup_level:
+                        state      = 2
+                        retest_low = li
+                    else:
+                        state = 0
                         break
 
-            if retest_idx is None:
-                hi = float(highs.iloc[-1])
-                ci = float(closes.iloc[-1])
-                oi = float(opens.iloc[-1])
-                li = float(lows.iloc[-1])
-                if (breakdown_idx < n - RR_MIN_BREAKOUT_BARS
-                        and hi >= plevel - buf
-                        and ci <= plevel + buf):
-                    retest_found   = True
-                    confirm_candle = is_bearish_reversal(oi, hi, li, ci)
+            elif state == 2:
+                if ci > sup_level:
+                    state = 0
+                    break
+                if ci < oi and ci < retest_low:
+                    if i >= n - 3:
+                        full = stoch_bear
+                        results.append((
+                            "rr_stoch", "bear",
+                            sup_level, ci, tf,
+                            full, k_curr, d_curr
+                        ))
+                    state = 0
+                    break
 
-            if retest_found and confirm_candle:
-                curr_c = float(closes.iloc[-1])
-                full   = stoch_bear
-                results.append(("rr_stoch", "bear", plevel, curr_c, tf, full, k_curr, d_curr))
-
-    return results[:1]
+    # أعد أقوى إشارة فقط (الأحدث)
+    return results[-1:] if results else []
 
 
 def msg_rr_stoch(sym, sector, sig):
