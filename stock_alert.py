@@ -136,54 +136,84 @@ def get_data(symbol, interval):
 # المساعدات التحليلية
 # ═══════════════════════════════════════════════
 
-def find_key_levels(df, lookback=20, min_touches=2, zone_pct=0.008):
+def find_key_levels(df, zone_pct=0.003, min_touches=2):
     """
-    يلتقط فقط المستويات القوية والواضحة:
-    - قمة أو قاع بارز (lookback=20 شمعة على كل جانب)
-    - لمسه السعر مرتين على الأقل
-    - الارتداد عنه واضح (body كبير)
+    يلتقط المستويات الأفقية القوية بطريقتين مدمجتين:
+
+    ① القمم والقيعان البارزة (swing highs/lows)
+    ② المستويات الأفقية التي لمسها السعر مرات متعددة
+       — يبحث في highs و lows عن تجمع أسعار في نطاق ضيق (±0.3%)
+       — هذا يلتقط مستويات مثل 161 في RDDT حتى لو مش قمة بارزة
+
+    الشرط: كل مستوى لازم يُلمس مرتين على الأقل
     """
     highs  = df["High"].squeeze().values
     lows   = df["Low"].squeeze().values
     closes = df["Close"].squeeze().values
     opens  = df["Open"].squeeze().values
     n = len(highs)
-    raw_levels = []
 
-    # ① التقط القمم والقيعان البارزة
+    # ── ① قمم وقيعان بارزة (lookback=10)
+    lookback = 10
+    raw = []
     for i in range(lookback, n - lookback):
         if highs[i] == max(highs[i-lookback:i+lookback]):
-            # تأكد أن الارتداد عنها قوي (جسم شمعة كبير)
-            body = abs(closes[i] - opens[i])
-            total = highs[i] - lows[i]
-            if total > 0 and body / total >= 0.3:
-                raw_levels.append(("resistance", float(highs[i]), i))
+            raw.append(("resistance", float(highs[i])))
         if lows[i] == min(lows[i-lookback:i+lookback]):
-            body = abs(closes[i] - opens[i])
-            total = highs[i] - lows[i]
-            if total > 0 and body / total >= 0.3:
-                raw_levels.append(("support", float(lows[i]), i))
+            raw.append(("support", float(lows[i])))
 
-    # ② احتسب عدد مرات اللمس لكل مستوى
-    strong_levels = []
-    used = set()
-    for idx, (ltype, lprice, li) in enumerate(raw_levels):
-        if idx in used:
-            continue
-        zone = lprice * zone_pct
-        touches = 1
-        for jdx, (jtype, jprice, ji) in enumerate(raw_levels):
-            if jdx == idx or jdx in used:
-                continue
-            if jtype == ltype and abs(jprice - lprice) <= zone:
-                touches += 1
-                used.add(jdx)
-        # فقط المستويات التي لمسها السعر مرتين أو أكثر
-        if touches >= min_touches:
-            strong_levels.append((ltype, lprice))
-        used.add(idx)
+    # ── ② مستويات أفقية من تجمع highs و lows
+    all_prices = [(float(h), "resistance") for h in highs] +                  [(float(l), "support")    for l in lows]
+    all_prices.sort(key=lambda x: x[0])
 
-    return strong_levels
+    # اجمع الأسعار المتقاربة في مستوى واحد
+    horizontal = []
+    visited = [False] * len(all_prices)
+    for i in range(len(all_prices)):
+        if visited[i]: continue
+        price_i, type_i = all_prices[i]
+        zone = price_i * zone_pct
+        cluster = [price_i]
+        types   = [type_i]
+        for j in range(i+1, len(all_prices)):
+            if visited[j]: continue
+            price_j, type_j = all_prices[j]
+            if abs(price_j - price_i) <= zone:
+                cluster.append(price_j)
+                types.append(type_j)
+                visited[j] = True
+            elif price_j > price_i + zone:
+                break
+        visited[i] = True
+        if len(cluster) >= min_touches:
+            avg_price = sum(cluster) / len(cluster)
+            # حدد النوع بالأغلبية
+            res_count = types.count("resistance")
+            sup_count = types.count("support")
+            level_type = "resistance" if res_count >= sup_count else "support"
+            horizontal.append((level_type, avg_price))
+
+    # ── دمج النتيجتين وإزالة المكررات
+    combined = raw + horizontal
+    final = []
+    used  = set()
+    for i, (lt, lp) in enumerate(combined):
+        if i in used: continue
+        zone = lp * zone_pct * 2
+        group = [(lt, lp)]
+        for j, (jt, jp) in enumerate(combined):
+            if j <= i or j in used: continue
+            if abs(jp - lp) <= zone:
+                group.append((jt, jp))
+                used.add(j)
+        used.add(i)
+        # الأغلبية تحدد النوع
+        r = sum(1 for t,_ in group if t=="resistance")
+        s = sum(1 for t,_ in group if t=="support")
+        avg = sum(p for _,p in group) / len(group)
+        final.append(("resistance" if r >= s else "support", avg))
+
+    return final
 
 def is_hammer(o, h, l, c):
     body  = abs(c - o)
@@ -273,7 +303,7 @@ def get_role_reversal(df, tf):
     results = []
 
     for level_type, level_price in find_key_levels(df):
-        tol      = level_price * 0.005   # تسامح ±0.5%
+        tol      = level_price * 0.002   # تسامح ±0.2%
         min_move = level_price * 0.05    # 5% ابتعاد بعد الاختراق
 
         if level_type == "resistance":
@@ -897,7 +927,7 @@ def get_rr_stoch_signal(df, tf):
     stoch_bear = (k_prev > d_prev and k_curr < d_curr and k_curr > 50 and d_curr > 50)
 
     results = []
-    tol = c_curr * 0.005  # تسامح ±0.5%
+    tol = c_curr * 0.002  # تسامح ±0.2% — صارم عشان ما يرسل إشارات بعيدة عن المستوى
 
     for level_type, level_price in find_key_levels(df):
         if level_type == "resistance":
