@@ -6,8 +6,6 @@ import numpy as np
 import os
 import sys
 from scipy import stats
-from datetime import datetime
-import pytz
 
 # ── يقرأ من Environment Variables إذا موجودة، وإلا يستخدم القيم الافتراضية
 TOKEN    = os.environ.get("TG_TOKEN",  "8751470715:AAGqx90Zho44N7pzr42XHZs3Y0gcDZKP_V4")
@@ -78,19 +76,6 @@ STOCKS = {
     "XLK":"📊 مؤشر","XLE":"📊 مؤشر","GLD":"📊 مؤشر","SLV":"📊 مؤشر",
 }
 
-# ═══════════════════════════════════════════════
-# فلتر أوقات السوق الأمريكي
-# ═══════════════════════════════════════════════
-
-def is_market_open():
-    """تحقق إن السوق الأمريكي مفتوح الآن (9:30 - 16:00 ET، الإثنين-الجمعة)"""
-    et = pytz.timezone("America/New_York")
-    now = datetime.now(et)
-    if now.weekday() >= 5:  # السبت والأحد
-        return False
-    market_open  = now.replace(hour=9,  minute=30, second=0, microsecond=0)
-    market_close = now.replace(hour=16, minute=0,  second=0, microsecond=0)
-    return market_open <= now <= market_close
 
 # ═══════════════════════════════════════════════
 # إرسال تيليجرام
@@ -740,13 +725,6 @@ def msg_strategy(sym, sector, sig):
 # ═══════════════════════════════════════════════
 
 def check_all():
-    # ── فلتر وقت السوق
-    if not is_market_open():
-        et = __import__("pytz").timezone("America/New_York")
-        now = __import__("datetime").datetime.now(et)
-        print(f"⏸ السوق مغلق — {now.strftime('%A %H:%M')} ET")
-        return
-
     print(f"\n⏰ {time.strftime('%H:%M:%S')} — بدء الفحص")
     total = 0
 
