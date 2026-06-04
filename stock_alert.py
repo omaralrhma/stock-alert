@@ -640,13 +640,12 @@ def get_strategy_signal(sym):
             sma_val   = float(closes.rolling(sma_p).mean().iloc[-1])
             price_now = float(closes.iloc[-1])
 
-            # ③ OBV
-            obv          = calc_obv(closes, volumes)
-            obv_curr     = obv[-1]
-            obv_prev_max = max(obv[:-5]) if len(obv) > 5 else obv_curr
-            obv_prev_min = min(obv[:-5]) if len(obv) > 5 else obv_curr
-            obv_bull = obv_curr > obv_prev_max
-            obv_bear = obv_curr < obv_prev_min
+            # ③ OBV — يكفي أن OBV فوق متوسطه لآخر 20 شمعة (صعودي)
+            obv      = calc_obv(closes, volumes)
+            obv_curr = obv[-1]
+            obv_ma20 = sum(obv[-20:]) / 20 if len(obv) >= 20 else obv_curr
+            obv_bull = obv_curr > obv_ma20        # OBV فوق متوسطه = ضغط شراء
+            obv_bear = obv_curr < obv_ma20        # OBV تحت متوسطه = ضغط بيع
 
             # ④ ROC
             if len(closes) > roc_candles:
