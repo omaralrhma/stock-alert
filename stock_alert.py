@@ -932,117 +932,171 @@ def is_bearish_reversal(o, h, l, c):
     return (c < o) or (upper_wick / total >= 0.6)
 
 
-def find_structural_resistance(df,
-                               lookback=100,
-                               min_rejection_pct=0.03,
-                               min_unbroken_bars=10,
-                               min_touches=1):
+def find_major_swing_highs(df, lookback=100, min_drop_pct=0.04,
+                           min_unbroken_bars=15, min_touches=2):
     """
-    قمة هيكلية صالحة فقط إذا:
-    ① أعلى High في آخر lookback شمعة
-    ② ارتد منها السعر مرة واحدة على الأقل بـ min_rejection_pct%
-    ③ نتج عنها هبوط لا يقل عن min_rejection_pct%
-    ④ بقيت دون اختراق لـ min_unbroken_bars شمعة على الأقل
-    ⑤ الاختراق يكون بإغلاق واضح فوقها (مش مجرد ذيل)
+    قمم هيكلية صالحة — المستوى الذي يراه المتداول المحترف:
+    ① أعلى High في نافذة 100 شمعة
+    ② نتج عنه هبوط 4%+ (حركة واضحة وملحوظة)
+    ③ بقي دون اختراق 15+ شمعة (مستوى راسخ)
+    ④ تم اختباره أو الاقتراب منه مرتين على الأقل
+    ⑤ مرتّب حسب القوة (أكبر حركة × عدد اللمسات)
     """
     highs  = df["High"].squeeze().values
     lows   = df["Low"].squeeze().values
     closes = df["Close"].squeeze().values
     n      = len(closes)
-    if n < lookback + 20:
+    if n < lookback // 2 + 20:
         return []
 
-    levels = []
+    candidates = []
     scan_start = max(20, n - lookback - 50)
 
     for i in range(scan_start, n - min_unbroken_bars - 5):
-        window_start = max(0, i - lookback)
-        local_high   = float(np.max(highs[window_start:i + 1]))
-
-        # ① لازم تكون أعلى High في النافذة
-        if highs[i] < local_high * 0.999:
+        window_start = max(0, i - lookback // 2)
+        local_max    = float(np.max(highs[window_start:i + 1]))
+        if highs[i] < local_max * 0.998:
             continue
 
-        res_level = float(highs[i])
+        res = float(highs[i])
 
-        # ② و ③ ارتداد بعدها بـ 3%+ (هبوط حقيقي)
-        rejection_confirmed = False
-        min_after = float(np.min(lows[i:min(i + 30, n)]))
-        drop_pct   = (res_level - min_after) / res_level
-        if drop_pct >= min_rejection_pct:
-            rejection_confirmed = True
-
-        if not rejection_confirmed:
+        # ② هبوط 4%+
+        future_end = min(i + 60, n)
+        min_after  = float(np.min(lows[i:future_end]))
+        drop_pct   = (res - min_after) / res
+        if drop_pct < min_drop_pct:
             continue
 
-        # ④ بقيت دون اختراق لـ min_unbroken_bars شمعة
-        broken_early = False
-        for j in range(i + 1, min(i + min_unbroken_bars, n)):
-            if closes[j] > res_level * 1.005:
-                broken_early = True
+        # ③ بقي دون اختراق 15+ شمعة
+        broken_bar = None
+        for j in range(i + 1, min(i + lookback, n)):
+            if closes[j] > res * 1.005:
+                broken_bar = j
                 break
-        if broken_early:
+        if broken_bar is None:
+            continue
+        if broken_bar - i < min_unbroken_bars:
             continue
 
-        levels.append((res_level, i))
+        # ④ عدد اللمسات (±1% من المستوى)
+        zone    = res * 0.01
+        touches = 0
+        for j in range(max(0, i - lookback // 2), i + 1):
+            if abs(highs[j] - res) <= zone:
+                touches += 1
+        if touches < min_touches:
+            continue
 
-    return levels
+        # ⑤ قوة = حجم الحركة × عدد اللمسات × مدة البقاء
+        score = drop_pct * 0.5 + touches * 0.3 + (broken_bar - i) * 0.001
+
+        candidates.append({
+            "level":     res,
+            "idx":       i,
+            "score":     score,
+            "drop_pct":  drop_pct,
+            "touches":   touches,
+            "unbroken":  broken_bar - i
+        })
+
+    # رتّب حسب القوة — اختر الأقوى مش الأقرب
+    candidates.sort(key=lambda x: x["score"], reverse=True)
+
+    # أزل المستويات المتقاربة (±1%)
+    filtered = []
+    for c in candidates:
+        too_close = any(abs(c["level"] - ex["level"]) / ex["level"] < 0.01
+                        for ex in filtered)
+        if not too_close:
+            filtered.append(c)
+
+    return [(c["level"], c["idx"], c["drop_pct"], c["touches"]) for c in filtered[:5]]
 
 
-def find_structural_support(df,
-                            lookback=100,
-                            min_rejection_pct=0.03,
-                            min_unbroken_bars=10):
+def find_major_swing_lows(df, lookback=100, min_bounce_pct=0.04,
+                          min_unbroken_bars=15, min_touches=2):
     """نفس المنطق للدعم الهيكلي"""
     highs  = df["High"].squeeze().values
     lows   = df["Low"].squeeze().values
     closes = df["Close"].squeeze().values
     n      = len(closes)
-    if n < lookback + 20:
+    if n < lookback // 2 + 20:
         return []
 
-    levels = []
+    candidates = []
     scan_start = max(20, n - lookback - 50)
 
     for i in range(scan_start, n - min_unbroken_bars - 5):
-        window_start = max(0, i - lookback)
-        local_low    = float(np.min(lows[window_start:i + 1]))
-
-        if lows[i] > local_low * 1.001:
+        window_start = max(0, i - lookback // 2)
+        local_min    = float(np.min(lows[window_start:i + 1]))
+        if lows[i] > local_min * 1.002:
             continue
 
-        sup_level = float(lows[i])
+        sup = float(lows[i])
 
-        max_after  = float(np.max(highs[i:min(i + 30, n)]))
-        bounce_pct = (max_after - sup_level) / sup_level
-        if bounce_pct < min_rejection_pct:
+        future_end = min(i + 60, n)
+        max_after  = float(np.max(highs[i:future_end]))
+        bounce_pct = (max_after - sup) / sup
+        if bounce_pct < min_bounce_pct:
             continue
 
-        broken_early = False
-        for j in range(i + 1, min(i + min_unbroken_bars, n)):
-            if closes[j] < sup_level * 0.995:
-                broken_early = True
+        broken_bar = None
+        for j in range(i + 1, min(i + lookback, n)):
+            if closes[j] < sup * 0.995:
+                broken_bar = j
                 break
-        if broken_early:
+        if broken_bar is None:
+            continue
+        if broken_bar - i < min_unbroken_bars:
             continue
 
-        levels.append((sup_level, i))
+        zone    = sup * 0.01
+        touches = 0
+        for j in range(max(0, i - lookback // 2), i + 1):
+            if abs(lows[j] - sup) <= zone:
+                touches += 1
+        if touches < min_touches:
+            continue
 
-    return levels
+        score = bounce_pct * 0.5 + touches * 0.3 + (broken_bar - i) * 0.001
+
+        candidates.append({
+            "level":      sup,
+            "idx":        i,
+            "score":      score,
+            "bounce_pct": bounce_pct,
+            "touches":    touches,
+            "unbroken":   broken_bar - i
+        })
+
+    candidates.sort(key=lambda x: x["score"], reverse=True)
+
+    filtered = []
+    for c in candidates:
+        too_close = any(abs(c["level"] - ex["level"]) / ex["level"] < 0.01
+                        for ex in filtered)
+        if not too_close:
+            filtered.append(c)
+
+    return [(c["level"], c["idx"], c["bounce_pct"], c["touches"]) for c in filtered[:5]]
+
 
 
 def get_rr_stoch_signal(df, tf):
     """
-    تبادل الأدوار الهيكلي الصارم — State Machine
+    تبادل الأدوار الهيكلي — كما يراه المتداول المحترف
 
-    شروط القمة الهيكلية الصالحة:
-    ① أعلى High في آخر 100 شمعة
-    ② ارتداد منها بـ 3%+ (هبوط حقيقي)
-    ③ بقيت دون اختراق 10+ شمعات
-    ④ الاختراق: Close فوقها بـ 1%+ (مش مجرد ذيل)
-    ⑤ الـ Retest: Low دخل نطاق ±0.5% منها والإغلاق فوقها
-    ⑥ التأكيد: شمعة صاعدة تغلق فوق High شمعة الـ retest
-    + إلغاء فوري إذا أغلق تحت المستوى في أي وقت
+    المستويات: هيكلية فقط (find_major_swing_highs/Lows)
+    - مستخرجة من اليومي و4h للأفضلية
+    - الساعة و30د لتأكيد توقيت الدخول فقط
+
+    التنبيه يتضمن:
+    ① الرمز + فريم المستوى + فريم الإشارة
+    ② سعر المستوى الهيكلي
+    ③ سعر الاختراق
+    ④ سعر إعادة الاختبار
+    ⑤ نسبة البعد عن المستوى
+    ⑥ سبب اعتبار المستوى هيكلياً
     """
     closes = df["Close"].squeeze()
     opens  = df["Open"].squeeze()
@@ -1052,9 +1106,9 @@ def get_rr_stoch_signal(df, tf):
     if n < 60:
         return []
 
-    BREAKOUT_MIN_PCT  = 0.01
-    BUFFER_PCT        = 0.005   # ±0.5% حول المستوى
-    MAX_RETEST_BARS   = 15
+    BREAKOUT_MIN_PCT  = 0.012
+    BUFFER_PCT        = 0.008
+    MAX_RETEST_BARS   = 20
     MIN_BREAKOUT_BARS = 3
 
     # Stochastic
@@ -1075,14 +1129,140 @@ def get_rr_stoch_signal(df, tf):
 
     results = []
 
-    # ══ صعودي: مقاومة هيكلية → دعم ══
-    res_levels = find_structural_resistance(df)
-    for res_level, res_idx in res_levels:
-        state        = 0
-        breakout_idx = None
-        retest_high  = None
+    # ══ صعودي ══
+    res_levels = find_major_swing_highs(df)
+    for res_level, res_idx, drop_pct, touches in res_levels:
+        reason = f"هبوط {drop_pct*100:.1f}% + {touches} لمسات"
+        state = 0; breakout_idx = None
+        breakout_close = retest_close = retest_high = None
 
         for i in range(res_idx + 1, n):
+            ci,oi,hi,li = float(c[i]),float(o[i]),float(h[i]),float(l[i])
+            dist = (ci - res_level) / res_level
+
+            if state == 0:
+                # اختراق بإغلاق واضح + شمعة صاعدة
+                if dist >= BREAKOUT_MIN_PCT and ci > oi:
+                    state=1; breakout_idx=i; breakout_close=ci
+            elif state == 1:
+                bs = i - breakout_idx
+                if ci < res_level: state=0; break
+                if bs > MAX_RETEST_BARS: state=0; break
+                if bs < MIN_BREAKOUT_BARS: continue
+                # Retest في نطاق ±0.8%
+                if abs(li - res_level) / res_level <= BUFFER_PCT:
+                    if ci >= res_level:
+                        state=2; retest_close=ci; retest_high=hi
+                    else: state=0; break
+            elif state == 2:
+                if ci < res_level: state=0; break
+                if ci > oi and ci > retest_high:
+                    if i >= n - 3:
+                        dist_r = abs(retest_close - res_level) / res_level * 100
+                        results.append({
+                            "direction":"bull","level":res_level,
+                            "breakout_price":breakout_close,
+                            "retest_price":retest_close,
+                            "current_price":ci,"dist_pct":dist_r,
+                            "reason":reason,"source_tf":tf,"tf":tf,
+                            "stoch_full":stoch_bull,"k":k_curr,"d":d_curr
+                        })
+                    state=0; break
+
+    # ══ هبوطي ══
+    sup_levels = find_major_swing_lows(df)
+    for sup_level, sup_idx, bounce_pct, touches in sup_levels:
+        reason = f"صعود {bounce_pct*100:.1f}% + {touches} لمسات"
+        state = 0; breakdown_idx = None
+        breakout_close = retest_close = retest_low = None
+
+        for i in range(sup_idx + 1, n):
+            ci,oi,hi,li = float(c[i]),float(o[i]),float(h[i]),float(l[i])
+            dist = (sup_level - ci) / sup_level
+
+            if state == 0:
+                if dist >= BREAKOUT_MIN_PCT and ci < oi:
+                    state=1; breakdown_idx=i; breakout_close=ci
+            elif state == 1:
+                bs = i - breakdown_idx
+                if ci > sup_level: state=0; break
+                if bs > MAX_RETEST_BARS: state=0; break
+                if bs < MIN_BREAKOUT_BARS: continue
+                if abs(hi - sup_level) / sup_level <= BUFFER_PCT:
+                    if ci <= sup_level:
+                        state=2; retest_close=ci; retest_low=li
+                    else: state=0; break
+            elif state == 2:
+                if ci > sup_level: state=0; break
+                if ci < oi and ci < retest_low:
+                    if i >= n - 3:
+                        dist_r = abs(retest_close - sup_level) / sup_level * 100
+                        results.append({
+                            "direction":"bear","level":sup_level,
+                            "breakout_price":breakout_close,
+                            "retest_price":retest_close,
+                            "current_price":ci,"dist_pct":dist_r,
+                            "reason":reason,"source_tf":tf,"tf":tf,
+                            "stoch_full":stoch_bear,"k":k_curr,"d":d_curr
+                        })
+                    state=0; break
+
+    return results[-1:] if results else []
+
+
+def get_rr_stoch_signal(df, tf):
+    """
+    تبادل الأدوار الهيكلي الحقيقي — كما يراه المتداول على الشارت
+
+    المستويات: مستخرجة من find_major_swing_highs/Lows (هيكلية فقط)
+    الإشارة تُرسل مع:
+    - الفريم الأصلي للمستوى
+    - سعر المقاومة الأصلي
+    - سعر الاختراق
+    - سعر إعادة الاختبار
+    - نسبة البعد عن المستوى
+    - سبب اعتباره هيكلياً
+    """
+    closes = df["Close"].squeeze()
+    opens  = df["Open"].squeeze()
+    highs  = df["High"].squeeze()
+    lows   = df["Low"].squeeze()
+    n      = len(closes)
+    if n < 60:
+        return []
+
+    BREAKOUT_MIN_PCT  = 0.01    # 1% اختراق واضح + شمعة صاعدة
+    BUFFER_PCT        = 0.008   # ±0.8% منطقة الـ retest
+    MAX_RETEST_BARS   = 20
+    MIN_BREAKOUT_BARS = 3
+
+    # Stochastic للتأكيد
+    k_line, d_line = calc_stoch(closes, highs, lows, k_period=30, smooth_k=5, smooth_d=5)
+    k_vals = k_line.values
+    d_vals = d_line.values
+    k_curr = float(k_vals[-1]) if not np.isnan(k_vals[-1]) else 50
+    k_prev = float(k_vals[-2]) if not np.isnan(k_vals[-2]) else 50
+    d_curr = float(d_vals[-1]) if not np.isnan(d_vals[-1]) else 50
+    d_prev = float(d_vals[-2]) if not np.isnan(d_vals[-2]) else 50
+    stoch_bull = k_prev < d_prev and k_curr > d_curr and k_curr < 50 and d_curr < 50
+    stoch_bear = k_prev > d_prev and k_curr < d_curr and k_curr > 50 and d_curr > 50
+
+    c = closes.values
+    o = opens.values
+    h = highs.values
+    l = lows.values
+    results = []
+
+    # ══ صعودي: مقاومة هيكلية → دعم ══
+    res_levels = find_major_swing_highs(df)
+    for res_level, res_idx, broken_bar, drop_pct in res_levels:
+        breakout_price = None
+        state          = 0
+        breakout_idx   = None
+        retest_price   = None
+        retest_high    = None
+
+        for i in range(broken_bar, n):
             ci = float(c[i])
             oi = float(o[i])
             hi = float(h[i])
@@ -1090,10 +1270,11 @@ def get_rr_stoch_signal(df, tf):
             dist = (ci - res_level) / res_level
 
             if state == 0:
-                # ⑤ اختراق بإغلاق (مش ذيل) فوق المستوى بـ 1%+
-                if dist >= BREAKOUT_MIN_PCT and ci > oi:  # شمعة صاعدة للاختراق
-                    state        = 1
-                    breakout_idx = i
+                # اختراق: إغلاق فوق المستوى بـ 1%+ مع شمعة صاعدة (زخم)
+                if dist >= BREAKOUT_MIN_PCT and ci > oi:
+                    state         = 1
+                    breakout_idx  = i
+                    breakout_price = ci
                 elif ci < res_level:
                     continue
 
@@ -1106,32 +1287,44 @@ def get_rr_stoch_signal(df, tf):
                     state = 0; break
                 if bars_since < MIN_BREAKOUT_BARS:
                     continue
-                # ⑤ Retest: Low في نطاق ±0.5% من المستوى
-                near_level = abs(li - res_level) / res_level <= BUFFER_PCT
-                if near_level:
+                # Retest: Low في نطاق ±0.8% من المستوى
+                near = abs(li - res_level) / res_level <= BUFFER_PCT
+                if near:
                     if ci >= res_level:
-                        state       = 2
-                        retest_high = hi
+                        state        = 2
+                        retest_price = ci
+                        retest_high  = hi
                     else:
                         state = 0; break
 
             elif state == 2:
                 if ci < res_level:
                     state = 0; break
-                # ⑥ تأكيد: شمعة صاعدة تغلق فوق High الـ retest
+                # تأكيد: شمعة صاعدة + إغلاق فوق High الـ retest
                 if ci > oi and ci > retest_high:
                     if i >= n - 3:
-                        results.append(("rr_stoch","bull",res_level,ci,tf,stoch_bull,k_curr,d_curr))
+                        dist_from_level = abs(ci - res_level) / res_level * 100
+                        reason = (f"هبوط {drop_pct*100:.1f}% بعدها | "
+                                  f"صمدت {broken_bar - res_idx} شمعة")
+                        results.append((
+                            "rr_stoch", "bull",
+                            res_level, ci, tf,
+                            stoch_bull, k_curr, d_curr,
+                            breakout_price, retest_price,
+                            dist_from_level, reason
+                        ))
                     state = 0; break
 
     # ══ هبوطي: دعم هيكلي → مقاومة ══
-    sup_levels = find_structural_support(df)
-    for sup_level, sup_idx in sup_levels:
-        state         = 0
-        breakdown_idx = None
-        retest_low    = None
+    sup_levels = find_major_swing_lows(df)
+    for sup_level, sup_idx, broken_bar, bounce_pct in sup_levels:
+        breakout_price = None
+        state          = 0
+        breakdown_idx  = None
+        retest_price   = None
+        retest_low     = None
 
-        for i in range(sup_idx + 1, n):
+        for i in range(broken_bar, n):
             ci = float(c[i])
             oi = float(o[i])
             hi = float(h[i])
@@ -1140,8 +1333,9 @@ def get_rr_stoch_signal(df, tf):
 
             if state == 0:
                 if dist >= BREAKOUT_MIN_PCT and ci < oi:
-                    state         = 1
-                    breakdown_idx = i
+                    state          = 1
+                    breakdown_idx  = i
+                    breakout_price = ci
                 elif ci > sup_level:
                     continue
 
@@ -1153,11 +1347,12 @@ def get_rr_stoch_signal(df, tf):
                     state = 0; break
                 if bars_since < MIN_BREAKOUT_BARS:
                     continue
-                near_level = abs(hi - sup_level) / sup_level <= BUFFER_PCT
-                if near_level:
+                near = abs(hi - sup_level) / sup_level <= BUFFER_PCT
+                if near:
                     if ci <= sup_level:
-                        state      = 2
-                        retest_low = li
+                        state        = 2
+                        retest_price = ci
+                        retest_low   = li
                     else:
                         state = 0; break
 
@@ -1166,48 +1361,60 @@ def get_rr_stoch_signal(df, tf):
                     state = 0; break
                 if ci < oi and ci < retest_low:
                     if i >= n - 3:
-                        results.append(("rr_stoch","bear",sup_level,ci,tf,stoch_bear,k_curr,d_curr))
+                        dist_from_level = abs(ci - sup_level) / sup_level * 100
+                        reason = (f"ارتداد {bounce_pct*100:.1f}% منه | "
+                                  f"صمد {broken_bar - sup_idx} شمعة")
+                        results.append((
+                            "rr_stoch", "bear",
+                            sup_level, ci, tf,
+                            stoch_bear, k_curr, d_curr,
+                            breakout_price, retest_price,
+                            dist_from_level, reason
+                        ))
                     state = 0; break
 
     return results[-1:] if results else []
 
 
 def msg_rr_stoch(sym, sector, sig):
-    _, direction, level, price, tf, full, k, d = sig
-    if direction == "bull":
-        if full:
-            header = f"✅✅ <b>إشارة كاملة CALL — {sym}</b>"
-            status = "🟢 تبادل أدوار + Stochastic صعودي"
-            stoch  = f"🟢 Stochastic تقاطع صعودي ({k:.1f}/{d:.1f}) تحت 50"
-        else:
-            header = f"⚠️ <b>تبادل أدوار — {sym}</b>"
-            status = "🟢 تبادل أدوار صعودي — تحقق شرط واحد"
-            stoch  = f"⏳ Stochastic لم يتقاطع بعد ({k:.1f}/{d:.1f})"
-        rr_txt = f"المقاومة تحوّلت دعماً عند <b>${level:.2f}</b>"
+    d         = sig["direction"]
+    level     = sig["level"]
+    source_tf = sig["source_tf"]
+    tf        = sig["tf"]
+    bp        = sig["breakout_price"]
+    rp        = sig["retest_price"]
+    cp        = sig["current_price"]
+    dist      = sig["dist_pct"]
+    reason    = sig["reason"]
+    full      = sig["stoch_full"]
+    k         = sig["k"]
+    kd        = sig["d"]
+
+    if d == "bull":
+        header = f"✅✅ <b>تبادل أدوار هيكلي CALL — {sym}</b>" if full else f"⚠️ <b>تبادل أدوار هيكلي — {sym}</b>"
+        status = "🟢 مقاومة → دعم"
+        stoch  = f"🟢 Stochastic ({k:.1f}/{kd:.1f}) تحت 50" if full else f"⏳ Stochastic لم يتقاطع ({k:.1f}/{kd:.1f})"
     else:
-        if full:
-            header = f"✅✅ <b>إشارة كاملة PUT — {sym}</b>"
-            status = "🔴 تبادل أدوار + Stochastic هبوطي"
-            stoch  = f"🔴 Stochastic تقاطع هبوطي ({k:.1f}/{d:.1f}) فوق 50"
-        else:
-            header = f"⚠️ <b>تبادل أدوار — {sym}</b>"
-            status = "🔴 تبادل أدوار هبوطي — تحقق شرط واحد"
-            stoch  = f"⏳ Stochastic لم يتقاطع بعد ({k:.1f}/{d:.1f})"
-        rr_txt = f"الدعم تحوّل مقاومة عند <b>${level:.2f}</b>"
+        header = f"✅✅ <b>تبادل أدوار هيكلي PUT — {sym}</b>" if full else f"⚠️ <b>تبادل أدوار هيكلي — {sym}</b>"
+        status = "🔴 دعم → مقاومة"
+        stoch  = f"🔴 Stochastic ({k:.1f}/{kd:.1f}) فوق 50" if full else f"⏳ Stochastic لم يتقاطع ({k:.1f}/{kd:.1f})"
 
     return (
         f"{header}\n"
         f"🏷 {sector}\n"
-        f"📐 الفريم: <b>{tf}</b>\n"
+        f"📐 فريم المستوى: <b>{source_tf}</b> | فريم الإشارة: <b>{tf}</b>\n"
         f"الحالة: {status}\n"
-        f"🔄 {rr_txt}\n"
-        f"📊 {stoch}\n"
-        f"💰 السعر: <b>${price:.2f}</b>"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📍 المستوى الهيكلي: <b>${level:.2f}</b>\n"
+        f"🚀 سعر الاختراق:    <b>${bp:.2f}</b>\n"
+        f"🔄 سعر الـ Retest:  <b>${rp:.2f}</b>\n"
+        f"💰 السعر الحالي:    <b>${cp:.2f}</b>\n"
+        f"📏 البعد عن المستوى: <b>{dist:.2f}%</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🧱 سبب الهيكلية: {reason}\n"
+        f"📊 {stoch}"
     )
 
-# ═══════════════════════════════════════════════
-# الفحص الرئيسي
-# ═══════════════════════════════════════════════
 
 def check_all():
     print(f"\n⏰ {time.strftime('%H:%M:%S')} — بدء الفحص")
