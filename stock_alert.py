@@ -932,8 +932,8 @@ def is_bearish_reversal(o, h, l, c):
     return (c < o) or (upper_wick / total >= 0.6)
 
 
-def find_major_swing_highs(df, lookback=100, min_drop_pct=0.04,
-                           min_unbroken_bars=15, min_touches=2):
+def find_major_swing_highs(df, lookback=80, min_drop_pct=0.03,
+                           min_unbroken_bars=10, min_touches=2):
     """
     قمم هيكلية صالحة — المستوى الذي يراه المتداول المحترف:
     ① أعلى High في نافذة 100 شمعة
@@ -1014,8 +1014,8 @@ def find_major_swing_highs(df, lookback=100, min_drop_pct=0.04,
     return [(c["level"], c["idx"], c["drop_pct"], c["touches"]) for c in filtered[:5]]
 
 
-def find_major_swing_lows(df, lookback=100, min_bounce_pct=0.04,
-                          min_unbroken_bars=15, min_touches=2):
+def find_major_swing_lows(df, lookback=80, min_bounce_pct=0.03,
+                          min_unbroken_bars=10, min_touches=2):
     """نفس المنطق للدعم الهيكلي"""
     highs  = df["High"].squeeze().values
     lows   = df["Low"].squeeze().values
@@ -1108,8 +1108,8 @@ def get_rr_stoch_signal(df, tf):
     if n < 60:
         return []
 
-    BREAKOUT_MIN_PCT  = 0.012
-    BUFFER_PCT        = 0.008
+    BREAKOUT_MIN_PCT  = 0.010
+    BUFFER_PCT        = 0.012
     MAX_RETEST_BARS   = 20
     MIN_BREAKOUT_BARS = 3
 
@@ -1431,23 +1431,6 @@ def check_all():
     for sym, sector in STOCKS.items():
         messages_to_send = []
         try:
-            # ── فلتر: السهم لازم فوق MA50 و MA100 على اليومي
-            try:
-                df_f = get_data(sym, "1d")
-                if df_f.empty or len(df_f) < 105:
-                    print(f"  — {sym}: بيانات غير كافية")
-                    continue
-                c_f     = df_f["Close"].squeeze()
-                ma50_f  = float(c_f.rolling(50).mean().iloc[-1])
-                ma100_f = float(c_f.rolling(100).mean().iloc[-1])
-                price_f = float(c_f.iloc[-1])
-                if price_f < ma50_f or price_f < ma100_f:
-                    print(f"  — {sym}: تحت MA50/MA100، تخطي")
-                    continue
-            except Exception as fe:
-                print(f"  — {sym}: خطأ فلتر {fe}")
-                continue
-
             # ① تبادل الأدوار — ساعة / 4ساعات / يومي
             for interval, tf_name in tf_role_mom:
                 df = get_data(sym, interval)
