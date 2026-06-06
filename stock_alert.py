@@ -949,11 +949,12 @@ def find_major_swing_highs(df, lookback=100, min_drop_pct=0.04,
     if n < lookback // 2 + 20:
         return []
 
+    lookback = int(lookback)
     candidates = []
-    scan_start = max(20, n - lookback - 50)
+    scan_start = int(max(20, n - lookback - 50))
 
-    for i in range(scan_start, n - min_unbroken_bars - 5):
-        window_start = max(0, i - lookback // 2)
+    for i in range(scan_start, n - int(min_unbroken_bars) - 5):
+        window_start = int(max(0, i - lookback // 2))
         local_max    = float(np.max(highs[window_start:i + 1]))
         if highs[i] < local_max * 0.998:
             continue
@@ -961,7 +962,7 @@ def find_major_swing_highs(df, lookback=100, min_drop_pct=0.04,
         res = float(highs[i])
 
         # ② هبوط 4%+
-        future_end = min(i + 60, n)
+        future_end = int(min(i + 60, n))
         min_after  = float(np.min(lows[i:future_end]))
         drop_pct   = (res - min_after) / res
         if drop_pct < min_drop_pct:
@@ -969,7 +970,7 @@ def find_major_swing_highs(df, lookback=100, min_drop_pct=0.04,
 
         # ③ بقي دون اختراق 15+ شمعة
         broken_bar = None
-        for j in range(i + 1, min(i + lookback, n)):
+        for j in range(i + 1, int(min(i + lookback, n))):
             if closes[j] > res * 1.005:
                 broken_bar = j
                 break
@@ -981,7 +982,7 @@ def find_major_swing_highs(df, lookback=100, min_drop_pct=0.04,
         # ④ عدد اللمسات (±1% من المستوى)
         zone    = res * 0.01
         touches = 0
-        for j in range(max(0, i - lookback // 2), i + 1):
+        for j in range(int(max(0, i - lookback // 2)), i + 1):
             if abs(highs[j] - res) <= zone:
                 touches += 1
         if touches < min_touches:
@@ -1023,25 +1024,26 @@ def find_major_swing_lows(df, lookback=100, min_bounce_pct=0.04,
     if n < lookback // 2 + 20:
         return []
 
+    lookback = int(lookback)
     candidates = []
-    scan_start = max(20, n - lookback - 50)
+    scan_start = int(max(20, n - lookback - 50))
 
-    for i in range(scan_start, n - min_unbroken_bars - 5):
-        window_start = max(0, i - lookback // 2)
+    for i in range(scan_start, n - int(min_unbroken_bars) - 5):
+        window_start = int(max(0, i - lookback // 2))
         local_min    = float(np.min(lows[window_start:i + 1]))
         if lows[i] > local_min * 1.002:
             continue
 
         sup = float(lows[i])
 
-        future_end = min(i + 60, n)
+        future_end = int(min(i + 60, n))
         max_after  = float(np.max(highs[i:future_end]))
         bounce_pct = (max_after - sup) / sup
         if bounce_pct < min_bounce_pct:
             continue
 
         broken_bar = None
-        for j in range(i + 1, min(i + lookback, n)):
+        for j in range(i + 1, int(min(i + lookback, n))):
             if closes[j] < sup * 0.995:
                 broken_bar = j
                 break
@@ -1052,7 +1054,7 @@ def find_major_swing_lows(df, lookback=100, min_bounce_pct=0.04,
 
         zone    = sup * 0.01
         touches = 0
-        for j in range(max(0, i - lookback // 2), i + 1):
+        for j in range(int(max(0, i - lookback // 2)), i + 1):
             if abs(lows[j] - sup) <= zone:
                 touches += 1
         if touches < min_touches:
