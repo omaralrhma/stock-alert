@@ -109,6 +109,31 @@ STOCKS = {
 # ═══════════════════════════════════════════════
 # إرسال تيليجرام
 # ═══════════════════════════════════════════════
+import json, hashlib
+
+SENT_SIGNALS_FILE = "/tmp/sent_signals.json"
+
+def load_sent():
+    try:
+        with open(SENT_SIGNALS_FILE) as f:
+            return set(json.load(f))
+    except:
+        return set()
+
+def save_sent(sent):
+    try:
+        with open(SENT_SIGNALS_FILE, "w") as f:
+            json.dump(list(sent)[-500:], f)  # احتفظ بآخر 500 فقط
+    except:
+        pass
+
+def signal_key(sym, direction, level, tf):
+    """مفتاح فريد للإشارة — يمنع التكرار"""
+    raw = f"{sym}_{direction}_{level:.2f}_{tf}"
+    return hashlib.md5(raw.encode()).hexdigest()[:12]
+
+SENT_SIGNALS = load_sent()
+
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     for cid in CHAT_IDS:
@@ -254,7 +279,7 @@ def detect_role_reversal(df, tf):
 
                 # تأكيد: شمعة صاعدة تغلق فوق High الـ retest
                 if ci > oi and ci > retest_high:
-                    if i >= n - 3:  # الإشارة حديثة (آخر 3 شمعات)
+                    if i == n - 1:  # الإشارة حديثة (الشمعة الأخيرة فقط)
                         dist_r = abs(retest_close - res) / res * 100
                         valley_drop_pct = (res - valley_min) / res * 100
                         results.append({
@@ -413,14 +438,27 @@ def check_all():
                 if df.empty or len(df) < 80:
                     continue
                 for sig in detect_role_reversal(df, tf_name):
-                    messages_to_send.append(msg_role_reversal(sym, sector, sig))
+                    messages_to_send.append((msg_role_reversal(sym, sector, sig), sig))
 
             if messages_to_send:
-                for msg in messages_to_send:
+                new_msgs = []
+                for msg, sig in messages_to_send:
+                    key = signal_key(sym, sig["direction"], sig["level"], sig["tf"])
+                    if key not in SENT_SIGNALS:
+                        new_msgs.append((msg, key))
+
+                for msg, key in new_msgs:
                     send_telegram(msg)
+                    SENT_SIGNALS.add(key)
                     time.sleep(0.8)
-                print(f"  ✅ {sym} — {len(messages_to_send)} إشعار")
-                total += 1
+
+                save_sent(SENT_SIGNALS)
+
+                if new_msgs:
+                    print(f"  ✅ {sym} — {len(new_msgs)} إشعار جديد")
+                    total += 1
+                else:
+                    print(f"  — {sym}: إشارات مكررة، تخطي")
             else:
                 print(f"  — {sym}: لا إشارات")
 
