@@ -234,7 +234,7 @@ def detect_role_reversal(df, tf):
 
         left_min  = float(np.min(l[pi - PIVOT_SIDE: pi]))
         right_min = float(np.min(l[pi + 1: pi + PIVOT_SIDE + 1]))
-        if sup >= left_min or sup >= right_min:
+        if sup > left_min or sup > right_min:
             continue
 
         state          = 0
@@ -278,7 +278,7 @@ def detect_role_reversal(df, tf):
                 if bs < MIN_RETEST_BARS:
                     continue
 
-                in_buffer = (sup * (2 - BUFFER_HIGH_PCT) <= hi <= sup * (2 - BUFFER_LOW_PCT))
+                in_buffer = (sup * BUFFER_LOW_PCT <= hi <= sup * BUFFER_HIGH_PCT)
                 if in_buffer:
                     if ci <= sup:
                         state        = 2
