@@ -1,388 +1,241 @@
 import yfinance as yf
 import requests
+import schedule
 import time
 import numpy as np
-import os, sys, json, hashlib
 
-TOKEN    = os.environ.get("TG_TOKEN",  "8751470715:AAGqx90Zho44N7pzr42XHZs3Y0gcDZKP_V4")
-_chats   = os.environ.get("TG_CHATS", "615265045,7775490993,5574232437")
-CHAT_IDS = [c.strip() for c in _chats.split(",") if c.strip()]
-RUN_ONCE = "--once" in sys.argv
+TOKEN    = "8751470715:AAGqx90Zho44N7pzr42XHZs3Y0gcDZKP_V4"
+CHAT_IDS = ["615265045", "7775490993", "5574232437"]
 
-# ═══════════════════════════════════════════════
-# 300+ سهم — أعلى تداول أوبشن
-# ═══════════════════════════════════════════════
 STOCKS = {
-    # تكنولوجيا كبرى
-    "AAPL":"💻 تك","MSFT":"💻 تك","NVDA":"💻 تك","GOOGL":"💻 تك","AMZN":"💻 تك",
-    "META":"💻 تك","TSLA":"💻 تك","AMD":"💻 تك","INTC":"💻 تك","AVGO":"💻 تك",
-    "QCOM":"💻 تك","TXN":"💻 تك","AMAT":"💻 تك","MU":"💻 تك","LRCX":"💻 تك",
-    "KLAC":"💻 تك","MRVL":"💻 تك","ARM":"💻 تك","SMCI":"💻 تك","DELL":"💻 تك",
-    "HPQ":"💻 تك","IBM":"💻 تك","STX":"💻 تك","WDC":"💻 تك","NTAP":"💻 تك",
-    # تكنولوجيا سحابة وأمن
-    "CRM":"💻 سحابة","ORCL":"💻 سحابة","ADBE":"💻 سحابة","NOW":"💻 سحابة","WDAY":"💻 سحابة",
-    "VEEV":"💻 سحابة","HUBS":"💻 سحابة","PAYC":"💻 سحابة","ROP":"💻 سحابة","ANSS":"💻 سحابة",
-    "SNPS":"💻 سحابة","CDNS":"💻 سحابة","PANW":"💻 أمن","CRWD":"💻 أمن","ZS":"💻 أمن",
-    "FTNT":"💻 أمن","NET":"💻 أمن","OKTA":"💻 أمن","S":"💻 أمن","CYBR":"💻 أمن",
-    # تكنولوجيا نمو
-    "SHOP":"💻 نمو","PLTR":"💻 نمو","SNOW":"💻 نمو","DDOG":"💻 نمو","MDB":"💻 نمو",
-    "TEAM":"💻 نمو","TWLO":"💻 نمو","ZM":"💻 نمو","DOCU":"💻 نمو","BOX":"💻 نمو",
-    "BILL":"💻 نمو","TOST":"💻 نمو","APP":"💻 نمو","TTD":"💻 نمو","CFLT":"💻 نمو",
-    "HOOD":"💻 نمو","RDDT":"💻 نمو","AFRM":"💻 نمو","SOFI":"💻 نمو","UPST":"💻 نمو",
-    # ذكاء اصطناعي وكوانتم
-    "AI":"🤖 ذكاء","SOUN":"🤖 ذكاء","IONQ":"🤖 ذكاء","RGTI":"🤖 ذكاء","QBTS":"🤖 ذكاء",
-    "BBAI":"🤖 ذكاء","ACHR":"🤖 ذكاء","JOBY":"🤖 ذكاء","RKLB":"🤖 ذكاء","LUNR":"🤖 ذكاء",
-    # مؤشرات وصناديق
-    "SPY":"📊 مؤشر","QQQ":"📊 مؤشر","IWM":"📊 مؤشر","DIA":"📊 مؤشر","VXX":"📊 مؤشر",
-    "XLK":"📊 مؤشر","XLF":"📊 مؤشر","XLE":"📊 مؤشر","XLV":"📊 مؤشر","XLI":"📊 مؤشر",
-    "XLP":"📊 مؤشر","XLY":"📊 مؤشر","XLB":"📊 مؤشر","XLRE":"📊 مؤشر","XLC":"📊 مؤشر",
-    "GLD":"📊 مؤشر","SLV":"📊 مؤشر","GDX":"📊 مؤشر","TLT":"📊 مؤشر","HYG":"📊 مؤشر",
-    "EEM":"📊 مؤشر","FXI":"📊 مؤشر","KWEB":"📊 مؤشر","ARKK":"📊 مؤشر","ARKW":"📊 مؤشر",
-    "TQQQ":"📊 رافعة","SQQQ":"📊 رافعة","SOXL":"📊 رافعة","SOXS":"📊 رافعة",
-    "SPXL":"📊 رافعة","UVXY":"📊 رافعة","LABU":"📊 رافعة","FNGU":"📊 رافعة",
-    # صحة
-    "JNJ":"🏥 صحة","PFE":"🏥 صحة","MRK":"🏥 صحة","ABBV":"🏥 صحة","LLY":"🏥 صحة",
-    "BMY":"🏥 صحة","AMGN":"🏥 صحة","GILD":"🏥 صحة","VRTX":"🏥 صحة","REGN":"🏥 صحة",
-    "MRNA":"🏥 صحة","TMO":"🏥 صحة","DHR":"🏥 صحة","ABT":"🏥 صحة","MDT":"🏥 صحة",
-    "ISRG":"🏥 صحة","DXCM":"🏥 صحة","BSX":"🏥 صحة","BIIB":"🏥 صحة","ILMN":"🏥 صحة",
-    "HIMS":"🏥 صحة","INCY":"🏥 صحة","ALNY":"🏥 صحة","EXAS":"🏥 صحة","NTRA":"🏥 صحة",
-    "HCA":"🏥 صحة","MOH":"🏥 صحة","UNH":"🏥 صحة","CI":"🏥 صحة","CVS":"🏥 صحة",
-    # طاقة
-    "XOM":"⛽ طاقة","CVX":"⛽ طاقة","COP":"⛽ طاقة","EOG":"⛽ طاقة","DVN":"⛽ طاقة",
-    "MPC":"⛽ طاقة","VLO":"⛽ طاقة","OXY":"⛽ طاقة","HAL":"⛽ طاقة","SLB":"⛽ طاقة",
-    "HES":"⛽ طاقة","PSX":"⛽ طاقة","MRO":"⛽ طاقة","APA":"⛽ طاقة","FANG":"⛽ طاقة",
-    "CTRA":"⛽ طاقة","SM":"⛽ طاقة","RIG":"⛽ طاقة","NOG":"⛽ طاقة","MTDR":"⛽ طاقة",
-    "ENPH":"🌱 متجددة","FSLR":"🌱 متجددة","BE":"🌱 متجددة","PLUG":"🌱 متجددة","SEDG":"🌱 متجددة",
-    # استهلاكي
-    "WMT":"🛒 استهلاكي","TGT":"🛒 استهلاكي","COST":"🛒 استهلاكي","HD":"🛒 استهلاكي","LOW":"🛒 استهلاكي",
-    "MCD":"🛒 استهلاكي","SBUX":"🛒 استهلاكي","CMG":"🛒 استهلاكي","NKE":"🛒 استهلاكي","LULU":"🛒 استهلاكي",
-    "MNST":"🛒 استهلاكي","ROST":"🛒 استهلاكي","TJX":"🛒 استهلاكي","ULTA":"🛒 استهلاكي","ETSY":"🛒 استهلاكي",
-    "ONON":"🛒 استهلاكي","SKX":"🛒 استهلاكي","DECK":"🛒 استهلاكي","RH":"🛒 استهلاكي","W":"🛒 استهلاكي",
-    "DKNG":"🛒 ترفيه","BKNG":"🛒 ترفيه","ABNB":"🛒 ترفيه","EXPE":"🛒 ترفيه","MAR":"🛒 ترفيه",
-    "HLT":"🛒 ترفيه","CCL":"🛒 ترفيه","RCL":"🛒 ترفيه","NCLH":"🛒 ترفيه","MGM":"🛒 ترفيه",
-    # صناعي ونقل
-    "CAT":"🏭 صناعي","DE":"🏭 صناعي","UPS":"🏭 صناعي","FDX":"🏭 صناعي","HON":"🏭 صناعي",
-    "GE":"🏭 صناعي","ETN":"🏭 صناعي","EMR":"🏭 صناعي","PWR":"🏭 صناعي","AXON":"🏭 صناعي",
-    "DAL":"🏭 نقل","UAL":"🏭 نقل","AAL":"🏭 نقل","LUV":"🏭 نقل","ALK":"🏭 نقل",
-    # اتصالات وميديا
-    "TMUS":"📡 اتصالات","NFLX":"📡 اتصالات","DIS":"📡 اتصالات","SPOT":"📡 اتصالات",
-    "WBD":"📡 اتصالات","PARA":"📡 اتصالات","TTWO":"📡 اتصالات","EA":"📡 اتصالات",
-    # مواد وتعدين
-    "NEM":"⛏ مواد","FCX":"⛏ مواد","ALB":"⛏ مواد","AA":"⛏ مواد","X":"⛏ مواد",
-    "CLF":"⛏ مواد","VALE":"⛏ مواد","BHP":"⛏ مواد","GOLD":"⛏ مواد","KGC":"⛏ مواد",
-    "WPM":"⛏ مواد","AEM":"⛏ مواد","MP":"⛏ مواد","GDXJ":"⛏ مواد",
-    # سيارات وEV
-    "RIVN":"🚗 سيارات","LCID":"🚗 سيارات","NIO":"🚗 سيارات","XPEV":"🚗 سيارات",
-    "LI":"🚗 سيارات","F":"🚗 سيارات","GM":"🚗 سيارات",
-    # عقارات
-    "PLD":"🏢 عقارات","AMT":"🏢 عقارات","EQIX":"🏢 عقارات","DLR":"🏢 عقارات",
-    "O":"🏢 عقارات","SPG":"🏢 عقارات",
-    # كريبتو
-    "COIN":"🪙 كريبتو","MSTR":"🪙 كريبتو","MARA":"🪙 كريبتو","RIOT":"🪙 كريبتو",
-    "HUT":"🪙 كريبتو","CLSK":"🪙 كريبتو",
-    # مالية حلال
-    "PYPL":"🏦 مالية","SPGI":"🏦 مالية","MCO":"🏦 مالية","MSCI":"🏦 مالية",
-    "ICE":"🏦 مالية","NDAQ":"🏦 مالية","FDS":"🏦 مالية",
+    "AAPL":"💻 تكنولوجيا","MSFT":"💻 تكنولوجيا","NVDA":"💻 تكنولوجيا",
+    "GOOGL":"💻 تكنولوجيا","META":"💻 تكنولوجيا","AMZN":"💻 تكنولوجيا",
+    "TSLA":"💻 تكنولوجيا","AMD":"💻 تكنولوجيا","INTC":"💻 تكنولوجيا",
+    "CRM":"💻 تكنولوجيا","ORCL":"💻 تكنولوجيا","ADBE":"💻 تكنولوجيا",
+    "QCOM":"💻 تكنولوجيا","AMAT":"💻 تكنولوجيا","MU":"💻 تكنولوجيا",
+    "PANW":"💻 تكنولوجيا","CRWD":"💻 تكنولوجيا","NET":"💻 تكنولوجيا",
+    "SNOW":"💻 تكنولوجيا","PLTR":"💻 تكنولوجيا","AVGO":"💻 تكنولوجيا",
+    "ARM":"💻 تكنولوجيا","NOW":"💻 تكنولوجيا","DDOG":"💻 تكنولوجيا",
+    "JPM":"🏦 مالية","BAC":"🏦 مالية","GS":"🏦 مالية","MS":"🏦 مالية",
+    "WFC":"🏦 مالية","V":"🏦 مالية","MA":"🏦 مالية","PYPL":"🏦 مالية",
+    "COIN":"🏦 مالية","SPGI":"🏦 مالية","CME":"🏦 مالية",
+    "JNJ":"🏥 صحة","PFE":"🏥 صحة","MRK":"🏥 صحة","ABBV":"🏥 صحة",
+    "LLY":"🏥 صحة","AMGN":"🏥 صحة","VRTX":"🏥 صحة","ISRG":"🏥 صحة",
+    "XOM":"⛽ طاقة","CVX":"⛽ طاقة","COP":"⛽ طاقة","OXY":"⛽ طاقة",
+    "SLB":"⛽ طاقة","MPC":"⛽ طاقة",
+    "WMT":"🛒 استهلاكي","COST":"🛒 استهلاكي","MCD":"🛒 استهلاكي",
+    "SBUX":"🛒 استهلاكي","NKE":"🛒 استهلاكي","KO":"🛒 استهلاكي",
+    "BA":"🏭 صناعي","LMT":"🏭 صناعي","CAT":"🏭 صناعي","GE":"🏭 صناعي",
+    "SPY":"📊 مؤشر","QQQ":"📊 مؤشر","IWM":"📊 مؤشر","GLD":"📊 مؤشر",
 }
-
-# ═══════════════════════════════════════════════
-# إرسال + منع التكرار
-# ═══════════════════════════════════════════════
-SENT_FILE = "/tmp/sent_signals.json"
-
-def load_sent():
-    try:
-        with open(SENT_FILE) as f: return set(json.load(f))
-    except: return set()
-
-def save_sent(s):
-    try:
-        with open(SENT_FILE,"w") as f: json.dump(list(s)[-500:], f)
-    except: pass
-
-def sig_key(sym, direction, level, tf):
-    return hashlib.md5(f"{sym}_{direction}_{level:.2f}_{tf}".encode()).hexdigest()[:12]
-
-SENT = load_sent()
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     for cid in CHAT_IDS:
         try:
-            requests.post(url, data={"chat_id":cid,"text":msg,"parse_mode":"HTML"})
+            requests.post(url, data={"chat_id": cid, "text": msg, "parse_mode": "HTML"})
             time.sleep(0.3)
         except Exception as e:
             print(f"خطأ: {e}")
 
-# ═══════════════════════════════════════════════
-# جلب البيانات
-# ═══════════════════════════════════════════════
-def get_data(symbol, interval):
-    pm = {"15m":"60d","30m":"60d","1h":"60d","4h":"60d","1d":"2y","1wk":"5y"}
-    df = yf.download(symbol, period=pm.get(interval,"1y"),
-                     interval=interval, progress=False, auto_adjust=True)
+def get_data(symbol, interval="1d"):
+    period = "1y" if interval == "1d" else "2y"
+    df = yf.download(symbol, period=period, interval=interval,
+                     progress=False, auto_adjust=True)
     df.dropna(inplace=True)
     return df
 
-# ═══════════════════════════════════════════════
-# تبادل الأدوار الهيكلي الصارم
-# ═══════════════════════════════════════════════
-def detect_role_reversal(df, tf):
+def get_stochastic(df, k=14, d=3):
+    highs  = df["High"].squeeze()
+    lows   = df["Low"].squeeze()
+    closes = df["Close"].squeeze()
+    lowest_low   = lows.rolling(k).min()
+    highest_high = highs.rolling(k).max()
+    k_line = 100 * (closes - lowest_low) / (highest_high - lowest_low)
+    d_line = k_line.rolling(d).mean()
+    return float(k_line.iloc[-1]), float(d_line.iloc[-1])
+
+def find_key_levels(df, lookback=15):
+    highs = df["High"].squeeze().values
+    lows  = df["Low"].squeeze().values
+    levels = []
+    for i in range(lookback, len(highs) - lookback):
+        if highs[i] == max(highs[i-lookback:i+lookback]):
+            levels.append(("resistance", float(highs[i])))
+        if lows[i] == min(lows[i-lookback:i+lookback]):
+            levels.append(("support", float(lows[i])))
+    return levels
+
+def get_gamma_exposure(sym, current_price):
     """
-    State Machine — 7 شروط هيكلية صارمة:
-
-    ① Prior Uptrend: قبل القمة السعر لازم يكون ارتفع 15%+ خلال 30 شمعة
-       (يمنع القمم داخل الاتجاه الهابط مثل ARM 315)
-    ② Absolute Peak: أعلى High في نافذة 40+ شمعة (مش bump صغير)
-    ③ Pivot Sides: 15 شمعة يمين ويسار
-    ④ فجوة زمنية: 20+ شمعة بين القمة والاختراق
-    ⑤ وادٍ واضح: هبوط 5%+ بين القمة والاختراق
-    ⑥ اختراق بحجم: Volume > 1.5x متوسط 20 شمعة
-    ⑦ Retest نظيف: لا إغلاق تحت المستوى بين الاختراق والـ retest
+    يحسب Gamma Exposure تقريبي من Open Interest
+    إيجابي = Calls > Puts عند المستوى (دعم للسعر)
+    سلبي   = Puts > Calls عند المستوى (ضغط على السعر)
     """
-    closes  = df["Close"].squeeze()
-    opens   = df["Open"].squeeze()
-    highs   = df["High"].squeeze()
-    lows    = df["Low"].squeeze()
-    volumes = df["Volume"].squeeze()
-    n       = len(closes)
+    try:
+        ticker = yf.Ticker(sym)
+        expirations = ticker.options
+        if not expirations:
+            return None, None
 
-    PS   = 15    # Pivot Side
-    AW   = 40    # Absolute Window للقمة المطلقة
-    UT   = 30    # Uptrend lookback bars
-    UTP  = 0.15  # Uptrend minimum 15%
-    MG   = 20    # Min Gap pivot→breakout
-    VD   = 0.05  # Valley Depth 5%
-    MRB  = 5     # Min Retest Bars
-    MXR  = 20    # Max Retest Bars
-    BRK  = 0.010 # Breakout 1%
-    VOLX = 1.5   # Volume multiplier
-    BFL  = 0.992 # Buffer Low
-    BFH  = 1.015 # Buffer High
+        # أقرب انتهاء صلاحية
+        exp = expirations[0]
+        chain = ticker.option_chain(exp)
+        calls = chain.calls
+        puts  = chain.puts
 
-    min_bars = max(PS*2, AW) + MG + MRB + 10
-    if n < min_bars:
-        return []
+        # فلتر الـ strikes القريبة من السعر الحالي (±5%)
+        margin = current_price * 0.05
+        calls_near = calls[
+            (calls["strike"] >= current_price - margin) &
+            (calls["strike"] <= current_price + margin)
+        ]
+        puts_near = puts[
+            (puts["strike"] >= current_price - margin) &
+            (puts["strike"] <= current_price + margin)
+        ]
 
-    c = closes.values.astype(float)
-    o = opens.values.astype(float)
-    h = highs.values.astype(float)
-    l = lows.values.astype(float)
-    v = volumes.values.astype(float)
+        total_call_oi = float(calls_near["openInterest"].sum())
+        total_put_oi  = float(puts_near["openInterest"].sum())
 
-    # حساب متوسط حجم التداول
-    vol_ma = np.array([
-        np.mean(v[max(0,i-20):i]) if i >= 20 else np.mean(v[:i+1])
-        for i in range(n)
-    ])
+        if total_call_oi + total_put_oi == 0:
+            return None, None
 
+        # نسبة Put/Call
+        pc_ratio = total_put_oi / total_call_oi if total_call_oi > 0 else 999
+
+        if pc_ratio < 0.7:
+            gamma_dir = "positive"
+            gamma_label = "🟢 إيجابية (Calls مسيطرة)"
+        elif pc_ratio > 1.3:
+            gamma_dir = "negative"
+            gamma_label = "🔴 سلبية (Puts مسيطرة)"
+        else:
+            gamma_dir = "neutral"
+            gamma_label = "⚪ محايدة"
+
+        return gamma_dir, gamma_label
+
+    except Exception:
+        return None, None
+
+def check_symbol(sym, sector):
     results = []
 
-    # ══ صعودي: مقاومة → دعم ══
-    for pi in range(max(PS, AW, UT), n - PS - MG - 1):
-        res = h[pi]
+    # جلب البيانات
+    df_1d = get_data(sym, "1d")
+    if df_1d.empty or len(df_1d) < 50:
+        return []
 
-        # ① Prior Uptrend: السعر قبل 30 شمعة لازم يكون أقل بـ 15%+
-        price_30_before = c[pi - UT]
-        uptrend_gain    = (res - price_30_before) / price_30_before
-        if uptrend_gain < UTP:
-            continue  # القمة مش في اتجاه صاعد = تخطي
+    closes = df_1d["Close"].squeeze()
+    current_price = float(closes.iloc[-1])
 
-        # ② Absolute Peak: أعلى High في نافذة 40 شمعة
-        abs_window_high = np.max(h[pi - AW: pi + 1])
-        if res < abs_window_high * 0.998:
-            continue  # مش القمة المطلقة في النافذة
+    # Stochastic
+    k, d = get_stochastic(df_1d)
 
-        # ③ Pivot Sides: 15 شمعة يمين ويسار
-        if res <= np.max(h[pi-PS:pi]) or res <= np.max(h[pi+1:pi+PS+1]):
-            continue
+    # تشبع بيع (oversold) أو شراء (overbought)
+    oversold  = k < 25 and d < 25
+    overbought = k > 75 and d > 75
 
-        state = 0; bi = None; bc = retest_h = retest_c = None
-        valley = res
+    if not oversold and not overbought:
+        return []
 
-        for i in range(pi+1, n):
-            ci,oi,hi2,li,vi = c[i],o[i],h[i],l[i],v[i]
+    stoch_dir = "bull" if oversold else "bear"
+    stoch_label = f"🟢 تشبع بيع (K:{k:.0f} D:{d:.0f})" if oversold else f"🔴 تشبع شراء (K:{k:.0f} D:{d:.0f})"
 
-            if state == 0:
-                if li < valley: valley = li
-                # ④ فجوة 20+ شمعة
-                if i - pi < MG: continue
-                # ⑤ وادٍ 5%+
-                if (res - valley)/res < VD: continue
-                # ⑥ اختراق بحجم عالٍ
-                vol_ok = vi > VOLX * vol_ma[i] if vol_ma[i] > 0 else True
-                if (ci-res)/res >= BRK and ci > oi and vol_ok:
-                    state=1; bi=i; bc=ci
-                elif ci < res * 0.70:
-                    break
+    # هل السعر قريب من دعم أو مقاومة؟
+    levels = find_key_levels(df_1d)
+    near_level = None
+    level_type_found = None
 
-            elif state == 1:
-                bs = i - bi
-                # ⑦ إلغاء فوري إذا أغلق تحت المستوى
-                if ci < res: state=0; break
-                if bs > MXR: state=0; break
-                if bs < MRB: continue
-                # Retest في Buffer
-                if BFL*res <= li <= BFH*res:
-                    if ci >= res: state=2; retest_c=ci; retest_h=hi2
-                    else: state=0; break
+    for level_type, lp in levels:
+        distance_pct = abs(current_price - lp) / lp * 100
+        if distance_pct <= 2.0:  # قريب من المستوى بـ 2%
+            near_level = lp
+            level_type_found = level_type
+            break
 
-            elif state == 2:
-                # ⑦ إلغاء إذا كسر
-                if ci < res: state=0; break
-                # تأكيد
-                if ci > oi and ci > retest_h:
-                    if i == n-1:
-                        results.append({
-                            "direction":      "bull",
-                            "level":          res,
-                            "valley_drop":    (res-valley)/res*100,
-                            "uptrend_gain":   uptrend_gain*100,
-                            "breakout_price": bc,
-                            "retest_price":   retest_c,
-                            "current_price":  ci,
-                            "dist_pct":       abs(retest_c-res)/res*100,
-                            "tf":             tf,
-                            "gap_bars":       bi-pi,
-                        })
-                    state=0; break
+    if near_level is None:
+        return []
 
-    # ══ هبوطي: دعم → مقاومة ══
-    for pi in range(max(PS, AW, UT), n - PS - MG - 1):
-        sup = l[pi]
+    # Gamma Exposure
+    gamma_dir, gamma_label = get_gamma_exposure(sym, current_price)
 
-        # ① Prior Downtrend: السعر قبل 30 شمعة لازم يكون أعلى بـ 15%+
-        price_30_before  = c[pi - UT]
-        downtrend_drop   = (price_30_before - sup) / price_30_before
-        if downtrend_drop < UTP:
-            continue  # القاع مش في اتجاه هابط واضح
+    # بناء الرسالة
+    level_emoji = "🛡 دعم" if level_type_found == "support" else "🔒 مقاومة"
 
-        # ② Absolute Low في نافذة 40 شمعة
-        abs_window_low = np.min(l[pi - AW: pi + 1])
-        if sup > abs_window_low * 1.002:
-            continue
-
-        # ③ Pivot Sides
-        if sup >= np.min(l[pi-PS:pi]) or sup >= np.min(l[pi+1:pi+PS+1]):
-            continue
-
-        state = 0; bi = None; bc = retest_l = retest_c = None
-        peak = sup
-
-        for i in range(pi+1, n):
-            ci,oi,hi2,li,vi = c[i],o[i],h[i],l[i],v[i]
-
-            if state == 0:
-                if hi2 > peak: peak = hi2
-                if i - pi < MG: continue
-                if (peak-sup)/sup < VD: continue
-                vol_ok = vi > VOLX * vol_ma[i] if vol_ma[i] > 0 else True
-                if (sup-ci)/sup >= BRK and ci < oi and vol_ok:
-                    state=1; bi=i; bc=ci
-                elif ci > sup * 1.30:
-                    break
-
-            elif state == 1:
-                bs = i - bi
-                if ci > sup: state=0; break
-                if bs > MXR: state=0; break
-                if bs < MRB: continue
-                if BFL*sup <= hi2 <= BFH*sup:
-                    if ci <= sup: state=2; retest_c=ci; retest_l=li
-                    else: state=0; break
-
-            elif state == 2:
-                if ci > sup: state=0; break
-                if ci < oi and ci < retest_l:
-                    if i == n-1:
-                        results.append({
-                            "direction":      "bear",
-                            "level":          sup,
-                            "valley_drop":    (peak-sup)/sup*100,
-                            "uptrend_gain":   downtrend_drop*100,
-                            "breakout_price": bc,
-                            "retest_price":   retest_c,
-                            "current_price":  ci,
-                            "dist_pct":       abs(retest_c-sup)/sup*100,
-                            "tf":             tf,
-                            "gap_bars":       bi-pi,
-                        })
-                    state=0; break
-
-    return results[-1:] if results else []
-
-
-def build_msg(sym, sector, sig):
-    d,lv,bp,rp,cp = sig["direction"],sig["level"],sig["breakout_price"],sig["retest_price"],sig["current_price"]
-    vd,dist,gap,tf = sig["valley_drop"],sig["dist_pct"],sig["gap_bars"],sig["tf"]
-    if d == "bull":
-        header = f"✅ <b>تبادل أدوار صعودي — {sym}</b>"
-        status = "🟢 مقاومة هيكلية → دعم"
+    # توافق الاتجاه
+    if level_type_found == "support" and stoch_dir == "bull":
+        signal_strength = "🔥 إشارة قوية — دعم + تشبع بيع"
+    elif level_type_found == "resistance" and stoch_dir == "bear":
+        signal_strength = "🔥 إشارة قوية — مقاومة + تشبع شراء"
     else:
-        header = f"✅ <b>تبادل أدوار هبوطي — {sym}</b>"
-        status = "🔴 دعم هيكلي → مقاومة"
-    ug = sig.get("uptrend_gain", 0)
-    return (
-        f"{header}\n🏷 {sector}\n📐 الفريم: <b>{tf}</b>\n{status}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📍 المستوى: <b>${lv:.2f}</b>\n"
-        f"📈 الاتجاه قبل القمة: <b>+{ug:.1f}%</b>\n"
-        f"🏔 الوادي: <b>{vd:.1f}%</b> | فجوة: <b>{gap} شمعة</b>\n"
-        f"🚀 الاختراق: <b>${bp:.2f}</b>\n"
-        f"🔄 Retest:   <b>${rp:.2f}</b>\n"
-        f"💰 الحالي:   <b>${cp:.2f}</b>\n"
-        f"📏 البعد:    <b>{dist:.2f}%</b>"
+        signal_strength = "⚡ إشارة متعارضة — راجع بنفسك"
+
+    # توافق الغاما مع الاتجاه
+    gamma_note = ""
+    if gamma_dir == "positive" and stoch_dir == "bull":
+        gamma_note = "✅ الغاما تدعم الصعود"
+    elif gamma_dir == "negative" and stoch_dir == "bear":
+        gamma_note = "✅ الغاما تدعم الهبوط"
+    elif gamma_dir == "positive" and stoch_dir == "bear":
+        gamma_note = "⚠️ الغاما تعاكس الهبوط"
+    elif gamma_dir == "negative" and stoch_dir == "bull":
+        gamma_note = "⚠️ الغاما تعاكس الصعود"
+
+    msg = (
+        f"📍 <b>${sym} — عند {level_emoji}</b>\n"
+        f"━━━━━━━━━━━━━━━━\n"
+        f"🏷 {sector}\n"
+        f"💰 السعر: ${current_price:.2f}\n"
+        f"📌 المستوى: ${near_level:.2f} ({level_emoji})\n"
+        f"📊 Stochastic: {stoch_label}\n"
     )
 
+    if gamma_label:
+        msg += f"🎯 Gamma Exposure: {gamma_label}\n"
+    if gamma_note:
+        msg += f"{gamma_note}\n"
 
-# ═══════════════════════════════════════════════
-# الفحص الرئيسي
-# ═══════════════════════════════════════════════
+    msg += (
+        f"━━━━━━━━━━━━━━━━\n"
+        f"{signal_strength}"
+    )
+
+    results.append(msg)
+    return results
+
 def check_all():
-    print(f"\n⏰ {time.strftime('%H:%M:%S')} — بدء الفحص ({len(STOCKS)} سهم)")
+    print(f"\n⏰ {time.strftime('%H:%M:%S')}")
     total = 0
-    TFS = [("15m","15 دقيقة"),("30m","30 دقيقة"),("1h","ساعة"),
-           ("4h","4 ساعات"),("1d","يومي"),("1wk","أسبوعي")]
 
     for sym, sector in STOCKS.items():
         try:
-            new_msgs = []
-            for interval, tf_name in TFS:
-                df = get_data(sym, interval)
-                if df.empty or len(df) < 80: continue
-                for sig in detect_role_reversal(df, tf_name):
-                    key = sig_key(sym, sig["direction"], sig["level"], tf_name)
-                    if key not in SENT:
-                        new_msgs.append((build_msg(sym, sector, sig), key))
-
-            if new_msgs:
-                for msg, key in new_msgs:
-                    send_telegram(msg)
-                    SENT.add(key)
-                    time.sleep(0.8)
-                save_sent(SENT)
-                print(f"  ✅ {sym} — {len(new_msgs)} إشعار")
+            msgs = check_symbol(sym, sector)
+            for msg in msgs:
+                send_telegram(msg)
+                print(f"  ✅ {sym}")
                 total += 1
-            else:
-                print(f"  — {sym}: لا إشارات")
-
+                time.sleep(1)
+            if not msgs:
+                print(f"  — {sym}: لا إشارة")
         except Exception as e:
             print(f"  ❌ {sym}: {e}")
 
     send_telegram(
         f"🔍 <b>انتهى الفحص</b>\n"
-        f"الأسهم: {len(STOCKS)} | 15د+30د+1h+4h+يومي+أسبوعي\n"
-        f"✅ إشارات: {total}\n⏱ {time.strftime('%H:%M:%S')}"
+        f"الأسهم: {len(STOCKS)}\n"
+        f"إشارات: {total}\n"
+        f"⏱ {time.strftime('%H:%M:%S')}"
     )
-    print(f"\n✅ إشارات: {total}")
+    print(f"\nإجمالي: {total}")
 
+print("🚀 بوت دعم/مقاومة + Stochastic + Gamma")
+print(f"الأسهم: {len(STOCKS)}")
+print("الفحص كل ساعة\n")
 
-print(f"🚀 بوت تبادل الأدوار | {len(STOCKS)} سهم | 6 فريمات")
 check_all()
-
-if not RUN_ONCE:
-    import schedule
-    schedule.every(1).hours.do(check_all)
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
+schedule.every(1).hours.do(check_all)
+while True:
+    schedule.run_pending()
+    time.sleep(60)
