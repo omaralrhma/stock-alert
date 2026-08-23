@@ -395,7 +395,7 @@ def detect_role_reversal(df, tf):
     def volume_ok(i):
         return volume_ma[i] <= 0 or volumes[i] >= volume_multiplier * volume_ma[i]
 
-    def make_signal(direction, level, pattern, pivot_i, breakout_i, retest_i, retest_extreme):
+    def make_signal(direction, level, pivot_i, breakout_i, retest_i, retest_extreme):
         entry = closes[retest_i]
 
         if direction == "bull":
@@ -415,7 +415,6 @@ def detect_role_reversal(df, tf):
         return {
             "direction": direction,
             "level": level,
-            "pattern": pattern,
             "valley_drop": abs(level - retest_extreme) / level * 100,
             "uptrend_gain": abs(level - closes[pivot_i - trend_bars]) / closes[pivot_i - trend_bars] * 100,
             "breakout_price": closes[breakout_i],
@@ -498,33 +497,10 @@ def detect_role_reversal(df, tf):
                 held_support = lows[i] >= level - retest_penetration(level, i)
 
                 if touched_from_above and held_support:
-                    state = "seek_confirmation"
-                    retest_i = i
-                    retest_low = lows[i]
-                    pattern = bullish_confirmation(opens, closes, highs, lows, i, level)
-
-                    if pattern and i == n - 1:
-                        signal = make_signal("bull", level, pattern, pivot_i, breakout_i, i, retest_low)
+                    if i == n - 1:
+                        signal = make_signal("bull", level, pivot_i, breakout_i, i, lows[i])
                         if signal:
                             results.append(signal)
-                        break
-
-            elif state == "seek_confirmation":
-                if lows[i] < level - retest_penetration(level, i):
-                    break
-                if closes[i] < level - invalidation_buffer(level, i):
-                    break
-
-                retest_low = min(retest_low, lows[i])
-
-                if i - retest_i > confirm_window:
-                    break
-
-                pattern = bullish_confirmation(opens, closes, highs, lows, i, level)
-                if pattern and i == n - 1:
-                    signal = make_signal("bull", level, pattern, pivot_i, breakout_i, i, retest_low)
-                    if signal:
-                        results.append(signal)
                     break
 
     # دعم تحول إلى مقاومة
@@ -591,33 +567,10 @@ def detect_role_reversal(df, tf):
                 held_resistance = highs[i] <= level + retest_penetration(level, i)
 
                 if touched_from_below and held_resistance:
-                    state = "seek_confirmation"
-                    retest_i = i
-                    retest_high = highs[i]
-                    pattern = bearish_confirmation(opens, closes, highs, lows, i, level)
-
-                    if pattern and i == n - 1:
-                        signal = make_signal("bear", level, pattern, pivot_i, breakout_i, i, retest_high)
+                    if i == n - 1:
+                        signal = make_signal("bear", level, pivot_i, breakout_i, i, highs[i])
                         if signal:
                             results.append(signal)
-                        break
-
-            elif state == "seek_confirmation":
-                if highs[i] > level + retest_penetration(level, i):
-                    break
-                if closes[i] > level + invalidation_buffer(level, i):
-                    break
-
-                retest_high = max(retest_high, highs[i])
-
-                if i - retest_i > confirm_window:
-                    break
-
-                pattern = bearish_confirmation(opens, closes, highs, lows, i, level)
-                if pattern and i == n - 1:
-                    signal = make_signal("bear", level, pattern, pivot_i, breakout_i, i, retest_high)
-                    if signal:
-                        results.append(signal)
                     break
 
     return results[-1:] if results else []
@@ -638,7 +591,6 @@ def build_msg(sym, sector, sig):
     stop = sig["stop"]
     t1 = sig["target1"]
     t2 = sig["target2"]
-    patt = sig["pattern"]
 
     if d == "bull":
         header = f"✅ <b>تبادل أدوار صعودي — {sym}</b>"
@@ -657,8 +609,7 @@ def build_msg(sym, sector, sig):
         f"🏔 عمق إعادة الاختبار: <b>{vd:.1f}%</b> | فجوة: <b>{gap} شمعة</b>\n"
         f"🚀 الاختراق: <b>${bp:.2f}</b>\n"
         f"🔄 Retest: <b>${rp:.2f}</b>\n"
-        f"🕯 شمعة التأكيد: <b>{patt}</b>\n"
-        f"⏱ إغلاق التأكيد: <b>{sig['confirm_time']}</b>\n"
+        f"⏱ وقت اللمس: <b>{sig['confirm_time']}</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
         f"💰 الدخول: <b>${cp:.2f}</b>\n"
         f"🛑 الوقف: <b>${stop:.2f}</b>\n"
