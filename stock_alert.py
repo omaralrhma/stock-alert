@@ -5,21 +5,17 @@ import numpy as np
 import pandas as pd
 import os, sys, json, hashlib
 
-TOKEN = os.environ.get("TG_TOKEN", "8751470715:AAGqx90Zho44N7pzr42XHZs3Y0gcDZKP_V4")
-_chats = os.environ.get("TG_CHATS", "615265045,7775490993,5574232437")
+# ── معلومات البوت — تُقرأ من Environment Variables إن وُجدت،
+#    وإلا تُستخدم هذه القيم الافتراضية (بوت التلي وقروبات الإرسال)
+TOKEN    = os.environ.get("TG_TOKEN",  "8751470715:AAGqx90Zho44N7pzr42XHZs3Y0gcDZKP_V4")
+_chats   = os.environ.get("TG_CHATS", "615265045,7775490993,5574232437")
 CHAT_IDS = [c.strip() for c in _chats.split(",") if c.strip()]
 RUN_ONCE = "--once" in sys.argv
 
-if not TOKEN:
-    raise RuntimeError("ضع رمز البوت في متغير البيئة TG_TOKEN؛ لا تضعه داخل الملف.")
-if not CHAT_IDS:
-    raise RuntimeError("ضع معرّف محادثة واحدًا أو أكثر في متغير البيئة TG_CHATS.")
-
 # ═══════════════════════════════════════════════
-# أسهم شركات فردية ذات أوبشن — بدون مؤشرات أو صناديق
+# شركات فردية ذات أوبشن — بلا مؤشرات أو صناديق
 # ═══════════════════════════════════════════════
 STOCKS = {
-    # تقنية كبرى وأشباه موصلات
     "AAPL":"💻 تقنية","MSFT":"💻 تقنية","NVDA":"💻 تقنية","GOOGL":"💻 تقنية","AMZN":"💻 تقنية",
     "META":"💻 تقنية","TSLA":"💻 تقنية","AMD":"💻 تقنية","INTC":"💻 تقنية","AVGO":"💻 تقنية",
     "QCOM":"💻 تقنية","TXN":"💻 تقنية","AMAT":"💻 تقنية","MU":"💻 تقنية","LRCX":"💻 تقنية",
@@ -29,8 +25,6 @@ STOCKS = {
     "MPWR":"💻 أشباه موصلات","SWKS":"💻 أشباه موصلات","QRVO":"💻 أشباه موصلات","COHR":"💻 أشباه موصلات",
     "TER":"💻 أشباه موصلات","LSCC":"💻 أشباه موصلات","ENTG":"💻 أشباه موصلات","WOLF":"💻 أشباه موصلات",
     "CRDO":"💻 أشباه موصلات","ALAB":"💻 أشباه موصلات","SNDK":"💻 تخزين","PSTG":"💻 تخزين",
-
-    # برمجيات وسحابة وأمن وإنترنت
     "CRM":"💻 سحابة","ORCL":"💻 سحابة","ADBE":"💻 سحابة","NOW":"💻 سحابة","WDAY":"💻 سحابة",
     "VEEV":"💻 سحابة","HUBS":"💻 سحابة","PAYC":"💻 سحابة","ROP":"💻 سحابة","SNPS":"💻 سحابة",
     "CDNS":"💻 سحابة","PANW":"💻 أمن","CRWD":"💻 أمن","ZS":"💻 أمن","FTNT":"💻 أمن",
@@ -43,15 +37,11 @@ STOCKS = {
     "U":"💻 برمجيات","RBLX":"💻 إنترنت","PINS":"💻 إنترنت","IOT":"💻 إنترنت","CART":"💻 إنترنت",
     "UBER":"💻 إنترنت","DASH":"💻 إنترنت","LYFT":"💻 إنترنت","GRAB":"💻 إنترنت","MELI":"💻 إنترنت",
     "SE":"💻 إنترنت","NU":"💻 تقنية مالية","DUOL":"💻 إنترنت","CAVA":"💻 نمو","CELH":"💻 نمو",
-
-    # ذكاء اصطناعي وكوانتم وطيران فضائي وكريبتو
     "AI":"🤖 ذكاء","SOUN":"🤖 ذكاء","IONQ":"🤖 كوانتم","RGTI":"🤖 كوانتم","QBTS":"🤖 كوانتم",
     "BBAI":"🤖 ذكاء","ACHR":"🚁 طيران","JOBY":"🚁 طيران","RKLB":"🚀 فضاء","LUNR":"🚀 فضاء",
     "TEM":"🤖 ذكاء","RBRK":"💻 أمن","MSTR":"🪙 كريبتو","COIN":"🪙 كريبتو","MARA":"🪙 تعدين",
     "RIOT":"🪙 تعدين","HUT":"🪙 تعدين","CLSK":"🪙 تعدين","BTDR":"🪙 تعدين","BTBT":"🪙 تعدين",
     "CORZ":"🪙 تعدين","IREN":"🪙 تعدين","CIFR":"🪙 تعدين","WULF":"🪙 تعدين",
-
-    # بنوك وخدمات مالية ومدفوعات وإدارة أصول
     "JPM":"🏦 بنوك","BAC":"🏦 بنوك","WFC":"🏦 بنوك","C":"🏦 بنوك","GS":"🏦 بنوك",
     "MS":"🏦 بنوك","SCHW":"🏦 بنوك","BK":"🏦 بنوك","STT":"🏦 بنوك","USB":"🏦 بنوك",
     "PNC":"🏦 بنوك","TFC":"🏦 بنوك","RF":"🏦 بنوك","KEY":"🏦 بنوك","FITB":"🏦 بنوك",
@@ -59,8 +49,6 @@ STOCKS = {
     "SPGI":"🏦 مالية","MCO":"🏦 مالية","MSCI":"🏦 مالية","ICE":"🏦 مالية","NDAQ":"🏦 مالية",
     "FDS":"🏦 مالية","CME":"🏦 مالية","BLK":"🏦 أصول","BX":"🏦 أصول","KKR":"🏦 أصول",
     "APO":"🏦 أصول","ARES":"🏦 أصول","TROW":"🏦 أصول","ALLY":"🏦 مالية","DFS":"🏦 مالية",
-
-    # رعاية صحية وأدوية وبيوتكنولوجيا
     "JNJ":"🏥 صحة","PFE":"🏥 صحة","MRK":"🏥 صحة","ABBV":"🏥 صحة","LLY":"🏥 صحة",
     "BMY":"🏥 صحة","AMGN":"🏥 صحة","GILD":"🏥 صحة","VRTX":"🏥 صحة","REGN":"🏥 صحة",
     "MRNA":"🏥 صحة","TMO":"🏥 صحة","DHR":"🏥 صحة","ABT":"🏥 صحة","MDT":"🏥 صحة",
@@ -71,8 +59,6 @@ STOCKS = {
     "SYK":"🏥 أجهزة","EW":"🏥 أجهزة","ZBH":"🏥 أجهزة","HOLX":"🏥 أجهزة","RMD":"🏥 أجهزة",
     "PODD":"🏥 أجهزة","BMRN":"🧬 بيوتكنولوجيا","IONS":"🧬 بيوتكنولوجيا","NBIX":"🧬 بيوتكنولوجيا",
     "SAGE":"🧬 بيوتكنولوجيا","CRSP":"🧬 بيوتكنولوجيا","BEAM":"🧬 بيوتكنولوجيا","RXRX":"🧬 بيوتكنولوجيا",
-
-    # طاقة وخدمات طاقة وطاقة نظيفة
     "XOM":"⛽ طاقة","CVX":"⛽ طاقة","COP":"⛽ طاقة","EOG":"⛽ طاقة","DVN":"⛽ طاقة",
     "MPC":"⛽ طاقة","VLO":"⛽ طاقة","OXY":"⛽ طاقة","HAL":"⛽ طاقة","SLB":"⛽ طاقة",
     "PSX":"⛽ طاقة","FANG":"⛽ طاقة","CTRA":"⛽ طاقة","SM":"⛽ طاقة","MTDR":"⛽ طاقة",
@@ -81,8 +67,6 @@ STOCKS = {
     "BKR":"⛽ خدمات","NOV":"⛽ خدمات","HP":"⛽ خدمات","LBRT":"⛽ خدمات","FTI":"⛽ خدمات",
     "ENPH":"🌱 طاقة نظيفة","FSLR":"🌱 طاقة نظيفة","BE":"🌱 طاقة نظيفة","PLUG":"🌱 طاقة نظيفة","SEDG":"🌱 طاقة نظيفة",
     "CCJ":"☢️ يورانيوم","UEC":"☢️ يورانيوم","UUUU":"☢️ يورانيوم","LEU":"☢️ يورانيوم","OKLO":"☢️ طاقة نووية",
-
-    # استهلاكي وتجزئة وسفر ومطاعم
     "WMT":"🛒 استهلاكي","TGT":"🛒 استهلاكي","COST":"🛒 استهلاكي","HD":"🛒 استهلاكي","LOW":"🛒 استهلاكي",
     "MCD":"🛒 مطاعم","SBUX":"🛒 مطاعم","CMG":"🛒 مطاعم","NKE":"🛒 استهلاكي","LULU":"🛒 استهلاكي",
     "MNST":"🛒 استهلاكي","ROST":"🛒 استهلاكي","TJX":"🛒 استهلاكي","ULTA":"🛒 استهلاكي","ETSY":"🛒 استهلاكي",
@@ -93,8 +77,6 @@ STOCKS = {
     "KHC":"🛒 استهلاكي","CAG":"🛒 استهلاكي","SJM":"🛒 استهلاكي","STZ":"🛒 مشروبات","TAP":"🛒 مشروبات",
     "BUD":"🛒 مشروبات","YUM":"🛒 مطاعم","WING":"🛒 مطاعم","DRI":"🛒 مطاعم","TXRH":"🛒 مطاعم",
     "BROS":"🛒 مطاعم","KR":"🛒 تجزئة","DG":"🛒 تجزئة","DLTR":"🛒 تجزئة","SFM":"🛒 تجزئة",
-
-    # صناعي ودفاع ونقل
     "CAT":"🏭 صناعي","DE":"🏭 صناعي","UPS":"🏭 نقل","FDX":"🏭 نقل","HON":"🏭 صناعي",
     "GE":"🏭 صناعي","ETN":"🏭 صناعي","EMR":"🏭 صناعي","PWR":"🏭 صناعي","AXON":"🏭 صناعي",
     "DAL":"✈️ نقل","UAL":"✈️ نقل","AAL":"✈️ نقل","LUV":"✈️ نقل","ALK":"✈️ نقل",
@@ -103,41 +85,101 @@ STOCKS = {
     "JCI":"🏭 صناعي","IR":"🏭 صناعي","PH":"🏭 صناعي","ITW":"🏭 صناعي","GWW":"🏭 صناعي",
     "WM":"🏭 خدمات","RSG":"🏭 خدمات","NSC":"🚂 نقل","CSX":"🚂 نقل","UNP":"🚂 نقل",
     "ODFL":"🚚 نقل","XPO":"🚚 نقل","JBHT":"🚚 نقل","CHRW":"🚚 نقل",
-
-    # اتصالات وميديا
     "TMUS":"📡 اتصالات","T":"📡 اتصالات","VZ":"📡 اتصالات","CMCSA":"📡 ميديا","NFLX":"📡 ميديا",
     "DIS":"📡 ميديا","SPOT":"📡 ميديا","WBD":"📡 ميديا","TTWO":"🎮 ألعاب","EA":"🎮 ألعاب",
     "FOXA":"📡 ميديا","FOX":"📡 ميديا","CHTR":"📡 اتصالات","SIRI":"📡 اتصالات","LYV":"📡 ترفيه",
     "IMAX":"📡 ترفيه","AMC":"📡 ترفيه","GME":"🎮 ألعاب",
-
-    # مواد وتعدين
     "NEM":"⛏️ مواد","FCX":"⛏️ مواد","ALB":"⛏️ مواد","AA":"⛏️ مواد","CLF":"⛏️ مواد",
     "VALE":"⛏️ مواد","BHP":"⛏️ مواد","GOLD":"⛏️ مواد","KGC":"⛏️ مواد","WPM":"⛏️ مواد",
     "AEM":"⛏️ مواد","MP":"⛏️ مواد","NUE":"⛏️ صلب","STLD":"⛏️ صلب","CMC":"⛏️ صلب",
     "RS":"⛏️ صلب","TECK":"⛏️ معادن","SCCO":"⛏️ نحاس","RIO":"⛏️ معادن","MOS":"⛏️ أسمدة",
     "CF":"⛏️ أسمدة","FMC":"⛏️ كيماويات","IPI":"⛏️ أسمدة","CE":"⛏️ كيماويات","DOW":"⛏️ كيماويات",
-
-    # مرافق وعقارات
     "NEE":"⚡ مرافق","DUK":"⚡ مرافق","SO":"⚡ مرافق","AEP":"⚡ مرافق","EXC":"⚡ مرافق",
     "SRE":"⚡ مرافق","XEL":"⚡ مرافق","EIX":"⚡ مرافق","PCG":"⚡ مرافق","CEG":"⚡ طاقة",
     "VST":"⚡ طاقة","NRG":"⚡ طاقة","AES":"⚡ مرافق","PLD":"🏢 عقارات","AMT":"🏢 عقارات",
     "EQIX":"🏢 عقارات","DLR":"🏢 عقارات","O":"🏢 عقارات","SPG":"🏢 عقارات","VICI":"🏢 عقارات",
     "WELL":"🏢 عقارات","AVB":"🏢 عقارات","EQR":"🏢 عقارات","PSA":"🏢 عقارات","CCI":"🏢 عقارات",
     "SBAC":"🏢 عقارات","EXR":"🏢 عقارات","KIM":"🏢 عقارات","BXP":"🏢 عقارات",
-
-    # ADRs صينية نشطة بالأوبشن
     "BABA":"🌏 الصين","JD":"🌏 الصين","PDD":"🌏 الصين","BIDU":"🌏 الصين","NTES":"🌏 الصين",
     "YUMC":"🌏 الصين","BILI":"🌏 الصين","BEKE":"🌏 الصين","FUTU":"🌏 الصين","TIGR":"🌏 الصين",
     "TME":"🌏 الصين","LI":"🚗 سيارات","NIO":"🚗 سيارات","XPEV":"🚗 سيارات",
 }
 
 # ═══════════════════════════════════════════════
+# شركات إضافية فردية ذات أوبشن — بلا مؤشرات أو صناديق
+# ═══════════════════════════════════════════════
+ADDITIONAL_STOCKS = {
+    "ACN":"💻 خدمات تقنية","ADSK":"💻 برمجيات","ANET":"💻 شبكات","CSCO":"💻 شبكات","HPE":"💻 هاردوير",
+    "JNPR":"💻 شبكات","NOK":"💻 اتصالات","ERIC":"💻 اتصالات","GLW":"💻 مكونات","ZBRA":"💻 هاردوير",
+    "KEYS":"💻 قياس","TDY":"💻 تقنية","GRMN":"💻 أجهزة","LOGI":"💻 أجهزة","SMAR":"💻 برمجيات",
+    "NICE":"💻 برمجيات","FROG":"💻 برمجيات","DOCN":"💻 سحابة","CVLT":"💻 أمن","PD":"💻 برمجيات",
+    "DT":"💻 برمجيات","MANH":"💻 برمجيات","TYL":"💻 برمجيات","GLOB":"💻 خدمات تقنية","EPAM":"💻 خدمات تقنية",
+    "FSLY":"💻 سحابة","BAND":"💻 اتصالات","ZI":"💻 برمجيات","ALKT":"💻 برمجيات","BMBL":"💻 إنترنت",
+    "GFS":"💻 أشباه موصلات","TSM":"💻 أشباه موصلات","ASML":"💻 أشباه موصلات","UMC":"💻 أشباه موصلات",
+    "HIMX":"💻 أشباه موصلات","SIMO":"💻 أشباه موصلات","LITE":"💻 أشباه موصلات","OLED":"💻 مكونات",
+    "MACOM":"💻 أشباه موصلات","SLAB":"💻 أشباه موصلات","SITM":"💻 أشباه موصلات","CAMT":"💻 أشباه موصلات",
+    "RMBS":"💻 أشباه موصلات","AMKR":"💻 أشباه موصلات","PLAB":"💻 أشباه موصلات","ACLS":"💻 أشباه موصلات",
+    "VRT":"💻 مراكز بيانات","MOD":"💻 مراكز بيانات","AAOI":"💻 اتصالات","CIEN":"💻 شبكات","FN":"💻 مكونات",
+    "VIAV":"💻 اتصالات","UI":"💻 شبكات","COMM":"💻 اتصالات","INOD":"💻 بيانات","SATS":"📡 أقمار",
+    "BRK-B":"🏦 مالية","PGR":"🏦 تأمين","CB":"🏦 تأمين","ALL":"🏦 تأمين","AFL":"🏦 تأمين",
+    "TRV":"🏦 تأمين","HIG":"🏦 تأمين","MET":"🏦 تأمين","PRU":"🏦 تأمين","AIG":"🏦 تأمين",
+    "ACGL":"🏦 تأمين","CINF":"🏦 تأمين","RJF":"🏦 مالية","AMP":"🏦 أصول","BEN":"🏦 أصول",
+    "IVZ":"🏦 أصول","SEIC":"🏦 أصول","MKTX":"🏦 مالية","CBOE":"🏦 بورصات","NAVI":"🏦 مالية",
+    "ONE":"🏦 مالية","RKT":"🏦 تمويل","UWMC":"🏦 تمويل","PFSI":"🏦 تمويل","FIS":"🏦 مدفوعات",
+    "FI":"🏦 مدفوعات","GPN":"🏦 مدفوعات","ADP":"🏦 خدمات","PAYX":"🏦 خدمات","INTU":"🏦 برمجيات",
+    "FICO":"🏦 برمجيات","WU":"🏦 مدفوعات","EBAY":"🏦 تجارة",
+    "MDLZ":"🛒 استهلاكي","HSY":"🛒 استهلاكي","KDP":"🛒 مشروبات","K":"🛒 استهلاكي","CPB":"🛒 استهلاكي",
+    "HRL":"🛒 استهلاكي","TSN":"🛒 استهلاكي","SYY":"🛒 استهلاكي","MKC":"🛒 استهلاكي","CLX":"🛒 استهلاكي",
+    "CHD":"🛒 استهلاكي","EL":"🛒 استهلاكي","COTY":"🛒 استهلاكي","PM":"🛒 استهلاكي","MO":"🛒 استهلاكي",
+    "BTI":"🛒 استهلاكي","DEO":"🛒 مشروبات","SAM":"🛒 مشروبات","FIZZ":"🛒 مشروبات","BBY":"🛒 تجزئة",
+    "WSM":"🛒 تجزئة","FIVE":"🛒 تجزئة","BURL":"🛒 تجزئة","ANF":"🛒 تجزئة","AEO":"🛒 تجزئة",
+    "GPS":"🛒 تجزئة","URBN":"🛒 تجزئة","LEVI":"🛒 تجزئة","CROX":"🛒 تجزئة","CPRI":"🛒 تجزئة",
+    "KSS":"🛒 تجزئة","M":"🛒 تجزئة","FL":"🛒 تجزئة","PLCE":"🛒 تجزئة","BKE":"🛒 تجزئة",
+    "CHWY":"🛒 تجارة","CVNA":"🚗 تجارة","CAR":"🚗 تأجير","ORLY":"🚗 قطع","AZO":"🚗 قطع",
+    "AAP":"🚗 قطع","LVS":"🛒 ترفيه","WYNN":"🛒 ترفيه","PENN":"🛒 ترفيه","CZR":"🛒 ترفيه",
+    "TDG":"🛡️ طيران","HEI":"🛡️ طيران","LHX":"🛡️ دفاع","BWXT":"🛡️ دفاع","CW":"🛡️ دفاع",
+    "TEX":"🏭 صناعي","AGCO":"🏭 صناعي","CNH":"🏭 صناعي","OSK":"🏭 صناعي","WAB":"🏭 صناعي",
+    "FAST":"🏭 صناعي","MAS":"🏭 صناعي","SWK":"🏭 صناعي","KBR":"🏭 صناعي","J":"🏭 هندسة",
+    "FLS":"🏭 صناعي","GNRC":"🏭 طاقة","HUBB":"🏭 صناعي","AYI":"🏭 صناعي","MLI":"🏭 صناعي",
+    "GGG":"🏭 صناعي","WMS":"🏭 صناعي","SITE":"🏭 مواد","MTZ":"🏭 هندسة","DY":"🏭 هندسة",
+    "TKR":"🏭 صناعي","ZIM":"🚢 شحن","FRO":"🚢 شحن","STNG":"🚢 شحن","GLNG":"🚢 شحن",
+    "FLNG":"🚢 شحن","GSL":"🚢 شحن","SBLK":"🚢 شحن","MATX":"🚢 شحن","KEX":"🚢 شحن",
+    "ARCB":"🚚 نقل","RXO":"🚚 نقل","SNDR":"🚚 نقل","KNX":"🚚 نقل","SAIA":"🚚 نقل",
+    "BDX":"🏥 أجهزة","BAX":"🏥 أجهزة","WST":"🏥 أجهزة","RVTY":"🏥 أجهزة","STE":"🏥 أجهزة",
+    "HSIC":"🏥 أجهزة","PEN":"🏥 أجهزة","GKOS":"🏥 أجهزة","MASI":"🏥 أجهزة","XRAY":"🏥 أجهزة",
+    "EXEL":"🧬 بيوتكنولوجيا","UTHR":"🧬 بيوتكنولوجيا","RPRX":"🧬 بيوتكنولوجيا","SRPT":"🧬 بيوتكنولوجيا","RARE":"🧬 بيوتكنولوجيا",
+    "VCYT":"🧬 بيوتكنولوجيا","GMED":"🏥 أجهزة","TNDM":"🏥 أجهزة","IRTC":"🏥 أجهزة","INSP":"🏥 أجهزة",
+    "ALKS":"🧬 بيوتكنولوجيا","CYTK":"🧬 بيوتكنولوجيا","HALO":"🧬 بيوتكنولوجيا",
+    "CIVI":"⛽ طاقة","CHRD":"⛽ طاقة","VNOM":"⛽ طاقة","CRC":"⛽ طاقة","PBF":"⛽ طاقة",
+    "DK":"⛽ طاقة","WFRD":"⛽ خدمات","PTEN":"⛽ خدمات","NEX":"⛽ خدمات","RES":"⛽ خدمات",
+    "OII":"⛽ خدمات","PUMP":"⛽ خدمات","TDW":"⛽ خدمات","ET":"⛽ غاز","EPD":"⛽ غاز",
+    "MPLX":"⛽ غاز","WES":"⛽ غاز","HL":"⛏️ فضة","CDE":"⛏️ فضة","PAAS":"⛏️ فضة",
+    "AG":"⛏️ فضة","NEXA":"⛏️ معادن","HBM":"⛏️ معادن","LXU":"⛏️ كيماويات","HUN":"⛏️ كيماويات",
+    "OLN":"⛏️ كيماويات","EMN":"⛏️ كيماويات","LYB":"⛏️ كيماويات","PPG":"⛏️ كيماويات","SHW":"⛏️ كيماويات",
+    "ATO":"⚡ مرافق","NI":"⚡ مرافق","DTE":"⚡ مرافق","ETR":"⚡ مرافق","FE":"⚡ مرافق",
+    "CMS":"⚡ مرافق","PPL":"⚡ مرافق","LNT":"⚡ مرافق","EVRG":"⚡ مرافق","WEC":"⚡ مرافق",
+    "AEE":"⚡ مرافق","PEG":"⚡ مرافق","ED":"⚡ مرافق","ES":"⚡ مرافق","AWK":"⚡ مرافق",
+    "CNP":"⚡ مرافق","INVH":"🏢 عقارات","CUBE":"🏢 عقارات","REXR":"🏢 عقارات","UDR":"🏢 عقارات",
+    "MAA":"🏢 عقارات","CPT":"🏢 عقارات","FRT":"🏢 عقارات","REG":"🏢 عقارات","ARE":"🏢 عقارات",
+    "DOC":"🏢 عقارات","ESS":"🏢 عقارات","HST":"🏢 عقارات","KRG":"🏢 عقارات","NNN":"🏢 عقارات",
+    "VTR":"🏢 عقارات","LUMN":"📡 اتصالات","ASTS":"📡 أقمار","IRDM":"📡 أقمار","VSAT":"📡 أقمار",
+    "GSAT":"📡 أقمار","CMBM":"📡 اتصالات",
+    "HOG":"🚗 سيارات","PTON":"🚗 تنقل","TM":"🚗 سيارات","HMC":"🚗 سيارات","STLA":"🚗 سيارات",
+    "BWA":"🚗 قطع","DAN":"🚗 قطع","GT":"🚗 إطارات","MGA":"🚗 قطع","VC":"🚗 قطع",
+    "ADNT":"🚗 قطع","BNTX":"🌏 بيوتكنولوجيا","NVO":"🌏 صحة","SAP":"🌏 برمجيات","RY":"🌏 بنوك",
+    "TD":"🌏 بنوك","BNS":"🌏 بنوك","UBS":"🌏 بنوك","DB":"🌏 بنوك","ING":"🌏 بنوك",
+    "LYG":"🌏 بنوك","BCS":"🌏 بنوك","SAN":"🌏 بنوك","IBN":"🌏 بنوك","HDB":"🌏 بنوك",
+    "INFY":"🌏 تقنية","WIT":"🌏 تقنية","WNS":"🌏 خدمات","ZTO":"🌏 الصين","TAL":"🌏 الصين",
+    "EDU":"🌏 الصين","TCOM":"🌏 الصين","WB":"🌏 الصين","QFIN":"🌏 الصين","VIPS":"🌏 الصين",
+    "RLX":"🌏 الصين","MINISO":"🌏 الصين","YMM":"🌏 الصين","KC":"🌏 الصين",
+}
+
+STOCKS.update(ADDITIONAL_STOCKS)
+
+# ═══════════════════════════════════════════════
 # إرسال ومنع التكرار
 # ═══════════════════════════════════════════════
-SENT_FILE = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "sent_signals.json",
-)
+SENT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sent_signals.json")
 
 def load_sent():
     try:
@@ -146,21 +188,20 @@ def load_sent():
     except Exception:
         return set()
 
-def save_sent(signals):
+def save_sent(s):
     try:
         with open(SENT_FILE, "w") as f:
-            json.dump(list(signals)[-500:], f)
+            json.dump(list(s)[-500:], f)
     except Exception:
         pass
 
-def sig_key(sym, direction, level, tf, confirm_time):
-    payload = f"{sym}_{direction}_{level:.4f}_{tf}_{confirm_time}"
+def sig_key(sym, direction, level, tf, touch_time):
+    payload = f"{sym}_{direction}_{level:.4f}_{tf}_{touch_time}"
     return hashlib.md5(payload.encode()).hexdigest()[:16]
 
 SENT = load_sent()
 
 def send_telegram(msg):
-    """يرجع True إذا استلمت تيليجرام الرسالة لدى محادثة واحدة على الأقل."""
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     delivered = False
 
@@ -181,6 +222,14 @@ def send_telegram(msg):
 
 # ═══════════════════════════════════════════════
 # جلب البيانات: شموع مكتملة فقط
+#
+# ملاحظة مهمة تم إصلاحها: yfinance لا يدعم فريم "4h" أصلاً
+# (الفريمات المدعومة رسمياً: 1m,2m,5m,15m,30m,60m/1h,1d,5d,1wk,1mo,3mo).
+# سابقاً كان طلب "4h" مباشرة من yfinance يفشل، وبما أنه يأتي قبل
+# "1d" و"1wk" في ترتيب الفحص، كان الخطأ يوقف فحص بقية الفريمات
+# (اليومي والأسبوعي) لكل سهم بالكامل — وهذا كان السبب الرئيسي
+# لغياب أغلب الإشعارات. الحل: نبني فريم 4 ساعات يدوياً بتجميع
+# (resample) بيانات الساعة الفعلية، ونتجاهل أي شمعة 4h غير مكتملة.
 # ═══════════════════════════════════════════════
 def _drop_unclosed_bar(df, interval):
     if df.empty:
@@ -209,13 +258,24 @@ def _drop_unclosed_bar(df, interval):
     return df
 
 def get_data(symbol, interval):
+    # ── فريم 4 ساعات: مُجمَّع يدوياً من بيانات الساعة (yfinance لا يدعمه مباشرة)
+    if interval == "4h":
+        base = get_data(symbol, "1h")
+        if base.empty or len(base) < 4:
+            return base
+
+        agg = {"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"}
+        df4h = base.resample("4h").agg(agg).dropna()
+
+        # اقبل فقط الشموع المكتملة (تحتوي 4 شموع ساعة كاملة)
+        counts = base["Close"].resample("4h").count()
+        df4h = df4h[counts.reindex(df4h.index).fillna(0) >= 4]
+        return df4h
+
     periods = {
-        "15m": "60d",
-        "30m": "60d",
-        "1h": "60d",
-        "4h": "60d",
-        "1d": "2y",
-        "1wk": "5y",
+        "15m": "60d", "30m": "60d",
+        "1h": "730d",   # أقصى مدى تسمح به Yahoo لبيانات الساعة — يفيد فريم 1h و4h معاً
+        "1d": "2y", "1wk": "5y",
     }
 
     df = yf.download(
@@ -233,113 +293,14 @@ def get_data(symbol, interval):
     return _drop_unclosed_bar(df, interval)
 
 # ═══════════════════════════════════════════════
-# أنماط الشموع
-# ═══════════════════════════════════════════════
-def _body(o, c, i):
-    return abs(c[i] - o[i])
-
-def _rng(h, l, i):
-    return max(h[i] - l[i], 1e-9)
-
-def is_bullish_engulfing(o, c, i):
-    if i < 1:
-        return False
-    prev_bear = c[i - 1] < o[i - 1]
-    curr_bull = c[i] > o[i]
-    return prev_bear and curr_bull and o[i] <= c[i - 1] and c[i] >= o[i - 1]
-
-def is_bearish_engulfing(o, c, i):
-    if i < 1:
-        return False
-    prev_bull = c[i - 1] > o[i - 1]
-    curr_bear = c[i] < o[i]
-    return prev_bull and curr_bear and o[i] >= c[i - 1] and c[i] <= o[i - 1]
-
-def is_hammer_shape(o, c, h, l, i):
-    body = _body(o, c, i)
-    rng = _rng(h, l, i)
-    if body / rng > 0.35:
-        return False
-
-    lower_wick = min(o[i], c[i]) - l[i]
-    upper_wick = h[i] - max(o[i], c[i])
-    return lower_wick >= 2 * max(body, rng * 0.05) and upper_wick <= body + rng * 0.08
-
-def is_shooting_star_shape(o, c, h, l, i):
-    body = _body(o, c, i)
-    rng = _rng(h, l, i)
-    if body / rng > 0.35:
-        return False
-
-    upper_wick = h[i] - max(o[i], c[i])
-    lower_wick = min(o[i], c[i]) - l[i]
-    return upper_wick >= 2 * max(body, rng * 0.05) and lower_wick <= body + rng * 0.08
-
-def is_doji(o, c, h, l, i):
-    return _body(o, c, i) / _rng(h, l, i) <= 0.12
-
-def is_morning_star(o, c, h, l, i):
-    if i < 2:
-        return False
-
-    b1, r1 = _body(o, c, i - 2), _rng(h, l, i - 2)
-    b3, r3 = _body(o, c, i), _rng(h, l, i)
-    first_bear_big = c[i - 2] < o[i - 2] and b1 / r1 > 0.5
-    star_small = _body(o, c, i - 1) / _rng(h, l, i - 1) < 0.35
-    third_bull_big = c[i] > o[i] and b3 / r3 > 0.5
-    closes_deep = c[i] > (o[i - 2] + c[i - 2]) / 2
-    return first_bear_big and star_small and third_bull_big and closes_deep
-
-def is_evening_star(o, c, h, l, i):
-    if i < 2:
-        return False
-
-    b1, r1 = _body(o, c, i - 2), _rng(h, l, i - 2)
-    b3, r3 = _body(o, c, i), _rng(h, l, i)
-    first_bull_big = c[i - 2] > o[i - 2] and b1 / r1 > 0.5
-    star_small = _body(o, c, i - 1) / _rng(h, l, i - 1) < 0.35
-    third_bear_big = c[i] < o[i] and b3 / r3 > 0.5
-    closes_deep = c[i] < (o[i - 2] + c[i - 2]) / 2
-    return first_bull_big and star_small and third_bear_big and closes_deep
-
-def bullish_confirmation(o, c, h, l, i, level):
-    rng = _rng(h, l, i)
-    closes_strong = c[i] > o[i] and c[i] >= level and (c[i] - l[i]) / rng >= 0.55
-
-    if not closes_strong:
-        return None
-    if is_bullish_engulfing(o, c, i):
-        return "ابتلاع صعودي"
-    if is_hammer_shape(o, c, h, l, i):
-        return "مطرقة صاعدة"
-    if i >= 1 and is_doji(o, c, h, l, i - 1) and c[i] > h[i - 1]:
-        return "دوجي + تأكيد صاعد"
-    if is_morning_star(o, c, h, l, i):
-        return "نجمة الصباح"
-
-    return None
-
-def bearish_confirmation(o, c, h, l, i, level):
-    rng = _rng(h, l, i)
-    closes_strong = c[i] < o[i] and c[i] <= level and (h[i] - c[i]) / rng >= 0.55
-
-    if not closes_strong:
-        return None
-    if is_bearish_engulfing(o, c, i):
-        return "ابتلاع هبوطي"
-    if is_shooting_star_shape(o, c, h, l, i):
-        return "شمعة هابطة بذيل علوي"
-    if i >= 1 and is_doji(o, c, h, l, i - 1) and c[i] < l[i - 1]:
-        return "دوجي + تأكيد هابط"
-    if is_evening_star(o, c, h, l, i):
-        return "نجمة المساء"
-
-    return None
-
-# ═══════════════════════════════════════════════
-# محرك تبادل الأدوار الصارم
+# محرك لمس تبادل الأدوار — دون تأكيد شموع
 # ═══════════════════════════════════════════════
 def detect_role_reversal(df, tf):
+    """يرسل عند لمس نقطة تبادل الأدوار بعد كسر مؤكد، دون انتظار شمعة تأكيد.
+
+    صعود: مقاومة هيكلية → كسر فوقها → عودة ولمسها من الأعلى.
+    هبوط: دعم هيكلي → كسر تحته → عودة ولمسه من الأسفل.
+    """
     required = {"Open", "High", "Low", "Close", "Volume"}
     if not required.issubset(df.columns):
         return []
@@ -351,16 +312,18 @@ def detect_role_reversal(df, tf):
     volumes = df["Volume"].astype(float).to_numpy()
     n = len(closes)
 
-    pivot_side = 8
-    structure_window = 60
-    trend_bars = 30
-    min_trend = 0.10
-    min_pivot_to_breakout = 12
-    min_retest_bars = 2
-    max_retest_bars = 18
-    confirm_window = 4
-    volume_multiplier = 1.35
+    pivot_side = 4
+    structure_window = 35
+    trend_bars = 20
+    min_trend = 0.02
+    min_pivot_to_breakout = 3
+    min_retest_bars = 1
+    max_retest_bars = 40
+    volume_multiplier = 0.90
     stop_buffer = 0.005
+
+    # يحتفظ بلمس حدث منذ آخر جولة فحص تقريبًا.
+    recent_touch_bars = {"15 دقيقة": 4, "30 دقيقة": 2}.get(tf, 1)
 
     min_bars = max(pivot_side * 2, structure_window, trend_bars) + min_pivot_to_breakout + max_retest_bars
     if n < min_bars:
@@ -373,7 +336,6 @@ def detect_role_reversal(df, tf):
         np.abs(highs[1:] - closes[:-1]),
         np.abs(lows[1:] - closes[:-1]),
     ])
-
     atr = np.array([np.mean(true_range[max(0, i - 13):i + 1]) for i in range(n)])
     volume_ma = np.array([
         np.mean(volumes[max(0, i - 20):i]) if i >= 20 else np.mean(volumes[:i + 1])
@@ -381,33 +343,31 @@ def detect_role_reversal(df, tf):
     ])
 
     def level_zone(price, i):
-        return max(price * 0.0035, atr[i] * 0.35)
+        return max(price * 0.0080, atr[i] * 0.65)
 
     def breakout_buffer(price, i):
-        return max(price * 0.004, atr[i] * 0.50)
+        return max(price * 0.0025, atr[i] * 0.35)
+
+    def touch_zone(price, i):
+        return max(price * 0.0040, atr[i] * 0.40)
 
     def invalidation_buffer(price, i):
-        return max(price * 0.002, atr[i] * 0.25)
-
-    def retest_penetration(price, i):
-        return max(price * 0.005, atr[i] * 0.60)
+        return max(price * 0.0100, atr[i] * 1.00)
 
     def volume_ok(i):
         return volume_ma[i] <= 0 or volumes[i] >= volume_multiplier * volume_ma[i]
 
-    def make_signal(direction, level, pivot_i, breakout_i, retest_i, retest_extreme):
-        entry = closes[retest_i]
+    def make_signal(direction, level, pivot_i, breakout_i, touch_i, extreme):
+        entry = closes[touch_i]
 
         if direction == "bull":
-            stop = retest_extreme * (1 - stop_buffer)
+            stop = extreme * (1 - stop_buffer)
             risk = entry - stop
-            target1 = entry + 2 * risk
-            target2 = entry + 3 * risk
+            target1, target2 = entry + 2 * risk, entry + 3 * risk
         else:
-            stop = retest_extreme * (1 + stop_buffer)
+            stop = extreme * (1 + stop_buffer)
             risk = stop - entry
-            target1 = entry - 2 * risk
-            target2 = entry - 3 * risk
+            target1, target2 = entry - 2 * risk, entry - 3 * risk
 
         if risk <= 0:
             return None
@@ -415,10 +375,11 @@ def detect_role_reversal(df, tf):
         return {
             "direction": direction,
             "level": level,
-            "valley_drop": abs(level - retest_extreme) / level * 100,
+            "pattern": "لمس نقطة تبادل الأدوار — دون تأكيد شمعة",
+            "valley_drop": abs(level - extreme) / level * 100,
             "uptrend_gain": abs(level - closes[pivot_i - trend_bars]) / closes[pivot_i - trend_bars] * 100,
             "breakout_price": closes[breakout_i],
-            "retest_price": closes[retest_i],
+            "retest_price": entry,
             "current_price": entry,
             "dist_pct": abs(entry - level) / level * 100,
             "tf": tf,
@@ -426,28 +387,26 @@ def detect_role_reversal(df, tf):
             "stop": stop,
             "target1": target1,
             "target2": target2,
-            "confirm_time": str(df.index[retest_i]),
+            "confirm_time": str(df.index[touch_i]),
         }
 
     results = []
     first_pivot = max(pivot_side, structure_window, trend_bars)
     last_pivot = n - pivot_side - min_pivot_to_breakout - min_retest_bars - 1
 
-    # مقاومة تحولت إلى دعم
+    # مقاومة صارت دعمًا.
     for pivot_i in range(first_pivot, last_pivot):
         level = highs[pivot_i]
         zone = level_zone(level, pivot_i)
-
         prior_highs = highs[max(0, pivot_i - structure_window):pivot_i]
-        touch_positions = np.where(np.abs(prior_highs - level) <= zone)[0]
-        separated_touch = any(
+        prior_touches = np.where(np.abs(prior_highs - level) <= zone)[0]
+        has_prior_touch = any(
             pivot_i - (max(0, pivot_i - structure_window) + p) >= pivot_side * 2
-            for p in touch_positions
+            for p in prior_touches
         )
-
-        if not separated_touch:
+        if not has_prior_touch:
             continue
-        if level < np.max(highs[pivot_i - structure_window:pivot_i + 1]) * 0.999:
+        if level < np.max(highs[pivot_i - structure_window:pivot_i + 1]) * 0.985:
             continue
         if level <= np.max(highs[pivot_i - pivot_side:pivot_i]):
             continue
@@ -456,68 +415,49 @@ def detect_role_reversal(df, tf):
         if (level - closes[pivot_i - trend_bars]) / closes[pivot_i - trend_bars] < min_trend:
             continue
 
-        state = "seek_breakout"
         breakout_i = None
-        retest_i = None
-        retest_low = None
-        valley = level
+        for i in range(pivot_i + min_pivot_to_breakout, n):
+            crossed = (
+                closes[i - 1] <= level + level_zone(level, i)
+                and closes[i] >= level + breakout_buffer(level, i)
+            )
+            if crossed and closes[i] > opens[i] and volume_ok(i):
+                breakout_i = i
+                break
 
-        for i in range(pivot_i + 1, n):
-            if state == "seek_breakout":
-                valley = min(valley, lows[i])
+        if breakout_i is None:
+            continue
 
-                if i - pivot_i < min_pivot_to_breakout:
-                    continue
+        for i in range(breakout_i + min_retest_bars, min(n, breakout_i + max_retest_bars + 1)):
+            if lows[i] < level - invalidation_buffer(level, i):
+                break
+            if closes[i] < level - invalidation_buffer(level, i):
+                break
 
-                pullback_ok = (level - valley) >= max(level * 0.03, atr[i] * 1.50)
-                crossed = (
-                    closes[i - 1] <= level + level_zone(level, i)
-                    and closes[i] >= level + breakout_buffer(level, i)
-                )
+            touched = (
+                lows[i] <= level + touch_zone(level, i)
+                and lows[i] >= level - invalidation_buffer(level, i)
+            )
+            if touched:
+                if i >= n - recent_touch_bars:
+                    signal = make_signal("bull", level, pivot_i, breakout_i, i, lows[i])
+                    if signal:
+                        results.append(signal)
+                break
 
-                if pullback_ok and crossed and closes[i] > opens[i] and volume_ok(i):
-                    state = "seek_retest"
-                    breakout_i = i
-                elif lows[i] < level * 0.70:
-                    break
-
-            elif state == "seek_retest":
-                elapsed = i - breakout_i
-
-                if lows[i] < level - retest_penetration(level, i):
-                    break
-                if closes[i] < level - invalidation_buffer(level, i):
-                    break
-                if elapsed > max_retest_bars:
-                    break
-                if elapsed < min_retest_bars:
-                    continue
-
-                touched_from_above = lows[i] <= level + level_zone(level, i)
-                held_support = lows[i] >= level - retest_penetration(level, i)
-
-                if touched_from_above and held_support:
-                    if i == n - 1:
-                        signal = make_signal("bull", level, pivot_i, breakout_i, i, lows[i])
-                        if signal:
-                            results.append(signal)
-                    break
-
-    # دعم تحول إلى مقاومة
+    # دعم صار مقاومة.
     for pivot_i in range(first_pivot, last_pivot):
         level = lows[pivot_i]
         zone = level_zone(level, pivot_i)
-
         prior_lows = lows[max(0, pivot_i - structure_window):pivot_i]
-        touch_positions = np.where(np.abs(prior_lows - level) <= zone)[0]
-        separated_touch = any(
+        prior_touches = np.where(np.abs(prior_lows - level) <= zone)[0]
+        has_prior_touch = any(
             pivot_i - (max(0, pivot_i - structure_window) + p) >= pivot_side * 2
-            for p in touch_positions
+            for p in prior_touches
         )
-
-        if not separated_touch:
+        if not has_prior_touch:
             continue
-        if level > np.min(lows[pivot_i - structure_window:pivot_i + 1]) * 1.001:
+        if level > np.min(lows[pivot_i - structure_window:pivot_i + 1]) * 1.015:
             continue
         if level >= np.min(lows[pivot_i - pivot_side:pivot_i]):
             continue
@@ -526,52 +466,35 @@ def detect_role_reversal(df, tf):
         if (closes[pivot_i - trend_bars] - level) / closes[pivot_i - trend_bars] < min_trend:
             continue
 
-        state = "seek_breakout"
         breakout_i = None
-        retest_i = None
-        retest_high = None
-        peak = level
+        for i in range(pivot_i + min_pivot_to_breakout, n):
+            crossed = (
+                closes[i - 1] >= level - level_zone(level, i)
+                and closes[i] <= level - breakout_buffer(level, i)
+            )
+            if crossed and closes[i] < opens[i] and volume_ok(i):
+                breakout_i = i
+                break
 
-        for i in range(pivot_i + 1, n):
-            if state == "seek_breakout":
-                peak = max(peak, highs[i])
+        if breakout_i is None:
+            continue
 
-                if i - pivot_i < min_pivot_to_breakout:
-                    continue
+        for i in range(breakout_i + min_retest_bars, min(n, breakout_i + max_retest_bars + 1)):
+            if highs[i] > level + invalidation_buffer(level, i):
+                break
+            if closes[i] > level + invalidation_buffer(level, i):
+                break
 
-                pullback_ok = (peak - level) >= max(level * 0.03, atr[i] * 1.50)
-                crossed = (
-                    closes[i - 1] >= level - level_zone(level, i)
-                    and closes[i] <= level - breakout_buffer(level, i)
-                )
-
-                if pullback_ok and crossed and closes[i] < opens[i] and volume_ok(i):
-                    state = "seek_retest"
-                    breakout_i = i
-                elif highs[i] > level * 1.30:
-                    break
-
-            elif state == "seek_retest":
-                elapsed = i - breakout_i
-
-                if highs[i] > level + retest_penetration(level, i):
-                    break
-                if closes[i] > level + invalidation_buffer(level, i):
-                    break
-                if elapsed > max_retest_bars:
-                    break
-                if elapsed < min_retest_bars:
-                    continue
-
-                touched_from_below = highs[i] >= level - level_zone(level, i)
-                held_resistance = highs[i] <= level + retest_penetration(level, i)
-
-                if touched_from_below and held_resistance:
-                    if i == n - 1:
-                        signal = make_signal("bear", level, pivot_i, breakout_i, i, highs[i])
-                        if signal:
-                            results.append(signal)
-                    break
+            touched = (
+                highs[i] >= level - touch_zone(level, i)
+                and highs[i] <= level + invalidation_buffer(level, i)
+            )
+            if touched:
+                if i >= n - recent_touch_bars:
+                    signal = make_signal("bear", level, pivot_i, breakout_i, i, highs[i])
+                    if signal:
+                        results.append(signal)
+                break
 
     return results[-1:] if results else []
 
@@ -584,38 +507,33 @@ def build_msg(sym, sector, sig):
     bp = sig["breakout_price"]
     rp = sig["retest_price"]
     cp = sig["current_price"]
-    vd = sig["valley_drop"]
     dist = sig["dist_pct"]
-    gap = sig["gap_bars"]
     tf = sig["tf"]
     stop = sig["stop"]
     t1 = sig["target1"]
     t2 = sig["target2"]
 
     if d == "bull":
-        header = f"✅ <b>تبادل أدوار صعودي — {sym}</b>"
-        status = "🟢 مقاومة هيكلية → دعم"
+        header = f"🔔 <b>وصل نقطة تبادل أدوار صعودية — {sym}</b>"
+        status = "🟢 مقاومة سابقة → دعم حالي"
     else:
-        header = f"✅ <b>تبادل أدوار هبوطي — {sym}</b>"
-        status = "🔴 دعم هيكلي → مقاومة"
-
-    ug = sig.get("uptrend_gain", 0)
+        header = f"🔔 <b>وصل نقطة تبادل أدوار هبوطية — {sym}</b>"
+        status = "🔴 دعم سابق → مقاومة حالية"
 
     return (
         f"{header}\n🏷 {sector}\n📐 الفريم: <b>{tf}</b>\n{status}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📍 المستوى: <b>${lv:.2f}</b>\n"
-        f"📈 الاتجاه قبل القمة/القاع: <b>{ug:.1f}%</b>\n"
-        f"🏔 عمق إعادة الاختبار: <b>{vd:.1f}%</b> | فجوة: <b>{gap} شمعة</b>\n"
-        f"🚀 الاختراق: <b>${bp:.2f}</b>\n"
-        f"🔄 Retest: <b>${rp:.2f}</b>\n"
+        f"📍 نقطة تبادل الأدوار: <b>${lv:.2f}</b>\n"
+        f"🚀 سعر الكسر: <b>${bp:.2f}</b>\n"
+        f"🎯 سعر اللمس الحالي: <b>${rp:.2f}</b>\n"
+        f"📏 البعد عن المستوى: <b>{dist:.2f}%</b>\n"
         f"⏱ وقت اللمس: <b>{sig['confirm_time']}</b>\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"💰 الدخول: <b>${cp:.2f}</b>\n"
+        f"💰 سعر الدخول المرجعي: <b>${cp:.2f}</b>\n"
         f"🛑 الوقف: <b>${stop:.2f}</b>\n"
         f"🎯 هدف 1 (1:2): <b>${t1:.2f}</b>\n"
         f"🎯 هدف 2 (1:3): <b>${t2:.2f}</b>\n"
-        f"📏 البعد عن المستوى: <b>{dist:.2f}%</b>"
+        f"⚠️ <i>تنبيه لمس مستوى فقط — لا ينتظر تأكيد شمعة.</i>"
     )
 
 # ═══════════════════════════════════════════════
@@ -626,38 +544,34 @@ def check_all():
     total = 0
 
     TFS = [
-        ("15m", "15 دقيقة"),
-        ("30m", "30 دقيقة"),
-        ("1h", "ساعة"),
-        ("4h", "4 ساعات"),
-        ("1d", "يومي"),
-        ("1wk", "أسبوعي"),
+        ("15m", "15 دقيقة"), ("30m", "30 دقيقة"), ("1h", "ساعة"),
+        ("4h", "4 ساعات"), ("1d", "يومي"), ("1wk", "أسبوعي"),
     ]
 
     for sym, sector in STOCKS.items():
-        try:
-            new_msgs = []
+        new_msgs = []
 
-            for interval, tf_name in TFS:
+        # ── كل فريم بمعزل عن الآخر: خطأ في فريم واحد لا يوقف بقية الفريمات
+        #    (هذا هو الإصلاح الأهم — سابقاً خطأ فريم 4h كان يُسقط فحص
+        #    اليومي والأسبوعي بالكامل لكل سهم بسبب try/except واحد للسهم كله)
+        for interval, tf_name in TFS:
+            try:
                 df = get_data(sym, interval)
                 if df.empty or len(df) < 80:
                     continue
 
                 for sig in detect_role_reversal(df, tf_name):
-                    key = sig_key(
-                        sym,
-                        sig["direction"],
-                        sig["level"],
-                        tf_name,
-                        sig["confirm_time"],
-                    )
-
+                    key = sig_key(sym, sig["direction"], sig["level"], tf_name, sig["confirm_time"])
                     if key not in SENT:
                         new_msgs.append((build_msg(sym, sector, sig), key))
 
+            except Exception as e:
+                print(f"  ⚠️ {sym} [{tf_name}]: {e}")
+                continue
+
+        try:
             if new_msgs:
                 delivered_for_symbol = 0
-
                 for msg, key in new_msgs:
                     if send_telegram(msg):
                         SENT.add(key)
@@ -667,7 +581,6 @@ def check_all():
                         print(f"  ⚠️ {sym}: لم تُرسل الإشارة؛ ستُعاد المحاولة في الفحص القادم")
 
                 save_sent(SENT)
-
                 if delivered_for_symbol:
                     print(f"  ✅ {sym} — {delivered_for_symbol} إشعار مُرسل")
                     total += delivered_for_symbol
@@ -680,18 +593,12 @@ def check_all():
     send_telegram(
         f"🔍 <b>انتهى الفحص</b>\n"
         f"الأسهم: {len(STOCKS)} | 15د+30د+1h+4h+يومي+أسبوعي\n"
-        f"✅ إشارات مُرسلة: {total}\n"
-        f"⏱ {time.strftime('%H:%M:%S')}"
+        f"✅ إشارات: {total}\n⏱ {time.strftime('%H:%M:%S')}"
     )
-
-    print(f"\n✅ إشارات مُرسلة: {total}")
+    print(f"\n✅ إشارات: {total}")
 
 if __name__ == "__main__":
-    print(
-        f"🚀 بوت تبادل الأدوار | {len(STOCKS)} سهم | 6 فريمات | "
-        "شموع مغلقة + كسر + إعادة اختبار + تأكيد"
-    )
-
+    print(f"🚀 بوت لمس تبادل الأدوار | {len(STOCKS)} سهم | 6 فريمات | كسر ثم لمس مستوى + وقف/هدف")
     check_all()
 
     if not RUN_ONCE:
