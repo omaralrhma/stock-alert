@@ -10,22 +10,29 @@ from datetime import datetime, timedelta
 TOKEN    = "8751470715:AAGqx90Zho44N7pzr42XHZs3Y0gcDZKP_V4"
 CHAT_IDS = ["615265045", "7775490993", "5574232437"]
 
-# الفريمات المطلوبة
-TIMEFRAMES = {
-    "30m": {"interval": "30m", "period": "60d",  "name": "30 دقيقة"},
-    "1h":  {"interval": "1h",  "period": "90d",  "name": "ساعة"},
-    "4h":  {"interval": "4h",  "period": "120d", "name": "4 ساعات"},
-    "1d":  {"interval": "1d",  "period": "2y",   "name": "يومي"},
-    "1wk": {"interval": "1wk", "period": "5y",   "name": "أسبوعي"},
+# إعدادات متغيرة حسب الفريم
+TF_SETTINGS = {
+    "30m": {
+        "interval": "30m", "period": "45d", "name": "30 دقيقة",
+        "swing": 3, "min_bars": 4, "max_bars": 25, "min_move": 0.006, "retest": 0.007
+    },
+    "1h": {
+        "interval": "1h", "period": "70d", "name": "ساعة",
+        "swing": 3, "min_bars": 5, "max_bars": 30, "min_move": 0.008, "retest": 0.008
+    },
+    "4h": {
+        "interval": "4h", "period": "120d", "name": "4 ساعات",
+        "swing": 4, "min_bars": 5, "max_bars": 35, "min_move": 0.011, "retest": 0.009
+    },
+    "1d": {
+        "interval": "1d", "period": "2y", "name": "يومي",
+        "swing": 4, "min_bars": 5, "max_bars": 40, "min_move": 0.015, "retest": 0.010
+    },
+    "1wk": {
+        "interval": "1wk", "period": "5y", "name": "أسبوعي",
+        "swing": 3, "min_bars": 3, "max_bars": 20, "min_move": 0.025, "retest": 0.012
+    },
 }
-
-# إعدادات تبادل الأدوار
-SWING_LENGTH       = 4
-MIN_BARS_AFTER     = 5
-MAX_BARS_AFTER     = 40
-MIN_MOVE_PCT       = 0.012
-RETEST_TOLERANCE   = 0.009
-MIN_BOUNCE_PCT     = 0.004
 
 sent_signals = {}
 
@@ -50,10 +57,8 @@ STOCKS = {
     "APP":"💻 تكنولوجيا","ZI":"💻 تكنولوجيا","HUBS":"💻 تكنولوجيا","WDAY":"💻 تكنولوجيا","PAYC":"💻 تكنولوجيا",
     "PCTY":"💻 تكنولوجيا","DOCU":"💻 تكنولوجيا","ZM":"💻 تكنولوجيا","DBX":"💻 تكنولوجيا","BOX":"💻 تكنولوجيا",
     "ESTC":"💻 تكنولوجيا","DT":"💻 تكنولوجيا","CFLT":"💻 تكنولوجيا","S":"💻 تكنولوجيا","CR":"💻 تكنولوجيا",
-    "GTLB":"💻 تكنولوجيا","AI":"💻 تكنولوجيا","BBAI":"💻 تكنولوجيا","SOUN":"💻 تكنولوجيا","SMCI":"💻 تكنولوجيا",
-    "APPF":"💻 تكنولوجيا","ALRM":"💻 تكنولوجيا","DOCN":"💻 تكنولوجيا","FROG":"💻 تكنولوجيا","MNDY":"💻 تكنولوجيا",
-    "GTLB":"💻 تكنولوجيا","S":"💻 تكنولوجيا","NET":"💻 تكنولوجيا","DDOG":"💻 تكنولوجيا","ZS":"💻 تكنولوجيا",
-    "CRWD":"💻 تكنولوجيا","PANW":"💻 تكنولوجيا","FTNT":"💻 تكنولوجيا","OKTA":"💻 تكنولوجيا","CYBR":"💻 تكنولوجيا",
+    "GTLB":"💻 تكنولوجيا","AI":"💻 تكنولوجيا","BBAI":"💻 تكنولوجيا","SOUN":"💻 تكنولوجيا","APPF":"💻 تكنولوجيا",
+    "ALRM":"💻 تكنولوجيا","DOCN":"💻 تكنولوجيا","FROG":"💻 تكنولوجيا","MNDY":"💻 تكنولوجيا","CYBR":"💻 تكنولوجيا",
     "QLYS":"💻 تكنولوجيا","TENB":"💻 تكنولوجيا","RPD":"💻 تكنولوجيا","VRNS":"💻 تكنولوجيا","SAIL":"💻 تكنولوجيا",
 
     # ===== مالية =====
@@ -72,7 +77,6 @@ STOCKS = {
     "ERIE":"🏦 مالية","RLI":"🏦 مالية","SIGI":"🏦 مالية","PLMR":"🏦 مالية","ROOT":"🏦 مالية","UPST":"🏦 مالية",
     "AFRM":"🏦 مالية","SOFI":"🏦 مالية","LC":"🏦 مالية","NU":"🏦 مالية","MELI":"🏦 مالية","FIS":"🏦 مالية",
     "FISV":"🏦 مالية","GPN":"🏦 مالية","JKHY":"🏦 مالية","FLT":"🏦 مالية","WEX":"🏦 مالية","FOUR":"🏦 مالية",
-    "TOST":"🏦 مالية","SQ":"🏦 مالية","PYPL":"🏦 مالية","V":"🏦 مالية","MA":"🏦 مالية","AXP":"🏦 مالية",
 
     # ===== صحة =====
     "JNJ":"🏥 صحة","PFE":"🏥 صحة","MRK":"🏥 صحة","ABBV":"🏥 صحة","LLY":"🏥 صحة","BMY":"🏥 صحة",
@@ -89,7 +93,7 @@ STOCKS = {
     "NBIX":"🏥 صحة","UTHR":"🏥 صحة","IONS":"🏥 صحة","SRPT":"🏥 صحة","RARE":"🏥 صحة","FOLD":"🏥 صحة",
     "ARWR":"🏥 صحة","BEAM":"🏥 صحة","CRSP":"🏥 صحة","EDIT":"🏥 صحة","NTLA":"🏥 صحة","VERV":"🏥 صحة",
     "RXRX":"🏥 صحة","SDGR":"🏥 صحة","CERT":"🏥 صحة","DOCS":"🏥 صحة","HIMS":"🏥 صحة","OSCR":"🏥 صحة",
-    "GH":"🏥 صحة","NTRA":"🏥 صحة","TXG":"🏥 صحة","PACB":"🏥 صحة","ILMN":"🏥 صحة","TWST":"🏥 صحة",
+    "GH":"🏥 صحة","NTRA":"🏥 صحة","TXG":"🏥 صحة","PACB":"🏥 صحة","TWST":"🏥 صحة",
 
     # ===== طاقة =====
     "XOM":"⛽ طاقة","CVX":"⛽ طاقة","COP":"⛽ طاقة","EOG":"⛽ طاقة","PXD":"⛽ طاقة","DVN":"⛽ طاقة",
@@ -152,7 +156,7 @@ STOCKS = {
     "DTE":"⚡ مرافق","AEE":"⚡ مرافق","CMS":"⚡ مرافق","CNP":"⚡ مرافق","NI":"⚡ مرافق",
     "LNT":"⚡ مرافق","EVRG":"⚡ مرافق","PNW":"⚡ مرافق","IDA":"⚡ مرافق","OGE":"⚡ مرافق",
     "POR":"⚡ مرافق","BKH":"⚡ مرافق","NWE":"⚡ مرافق","AVA":"⚡ مرافق","MGEE":"⚡ مرافق",
-    "OTTR":"⚡ مرافق","ALE":"⚡ مرافق","PCG":"⚡ مرافق","EIX":"⚡ مرافق","SRE":"⚡ مرافق",
+    "OTTR":"⚡ مرافق","ALE":"⚡ مرافق","PCG":"⚡ مرافق",
 
     # ===== مؤشرات وETFs =====
     "SPY":"📊 مؤشر","QQQ":"📊 مؤشر","IWM":"📊 مؤشر","DIA":"📊 مؤشر","VTI":"📊 مؤشر",
@@ -165,7 +169,7 @@ STOCKS = {
     "HACK":"📊 مؤشر","CIBR":"📊 مؤشر","SKYY":"📊 مؤشر","CLOU":"📊 مؤشر","WCLD":"📊 مؤشر",
     "TAN":"📊 مؤشر","ICLN":"📊 مؤشر","QCLN":"📊 مؤشر","PBW":"📊 مؤشر","LIT":"📊 مؤشر",
     "REMX":"📊 مؤشر","URA":"📊 مؤشر","GDX":"📊 مؤشر","GDXJ":"📊 مؤشر","SIL":"📊 مؤشر",
-    "COPX":"📊 مؤشر","JJC":"📊 مؤشر","USO":"📊 مؤشر","UNG":"📊 مؤشر","BNO":"📊 مؤشر",
+    "COPX":"📊 مؤشر","USO":"📊 مؤشر","UNG":"📊 مؤشر","BNO":"📊 مؤشر",
 }
 
 # ==================== دوال مساعدة ====================
@@ -198,11 +202,11 @@ def find_swings(highs, lows, length=4):
             swing_highs.append((i, highs[i]))
     return swing_highs
 
-# ==================== معادلة تبادل الأدوار المحسّنة ====================
-def check_role_reversal(sym, sector, tf_key, tf_info):
+# ==================== معادلة تبادل الأدوار ====================
+def check_role_reversal(sym, sector, tf_key, settings):
     try:
-        df = get_data(sym, tf_info["interval"], tf_info["period"])
-        if df is None or len(df) < 50:
+        df = get_data(sym, settings["interval"], settings["period"])
+        if df is None or len(df) < 40:
             return None
 
         closes = df["Close"].values
@@ -211,57 +215,63 @@ def check_role_reversal(sym, sector, tf_key, tf_info):
         lows   = df["Low"].values
         volumes = df["Volume"].values if "Volume" in df.columns else None
 
-        swing_highs = find_swings(highs, lows, SWING_LENGTH)
+        swing_length = settings["swing"]
+        min_bars     = settings["min_bars"]
+        max_bars     = settings["max_bars"]
+        min_move     = settings["min_move"]
+        retest_tol   = settings["retest"]
+
+        swing_highs = find_swings(highs, lows, swing_length)
         if len(swing_highs) < 2:
             return None
 
         current_idx = len(df) - 1
 
         for swing_idx, resistance in reversed(swing_highs[:-1]):
-            if current_idx - swing_idx < MIN_BARS_AFTER + 3:
+            if current_idx - swing_idx < min_bars + 2:
                 continue
 
             break_idx = None
-            for i in range(swing_idx + 1, current_idx - MIN_BARS_AFTER):
-                if closes[i] > resistance * 1.002:
+            for i in range(swing_idx + 1, current_idx - min_bars):
+                if closes[i] > resistance * 1.0015:
                     break_idx = i
                     break
             if break_idx is None:
                 continue
 
             bars_after = current_idx - break_idx
-            if bars_after < MIN_BARS_AFTER or bars_after > MAX_BARS_AFTER:
+            if bars_after < min_bars or bars_after > max_bars:
                 continue
 
             max_price_after = max(highs[break_idx : current_idx+1])
             move_pct = (max_price_after - resistance) / resistance
-            if move_pct < MIN_MOVE_PCT:
+            if move_pct < min_move:
                 continue
 
-            mid_point = break_idx + (bars_after // 2)
+            mid_point = break_idx + max(2, bars_after // 3)
             if mid_point < current_idx:
                 mid_low = min(lows[break_idx : mid_point+1])
-                if mid_low < resistance * 0.985:
+                if mid_low < resistance * 0.988:
                     continue
 
             current_low   = lows[current_idx]
             current_close = closes[current_idx]
             current_open  = opens[current_idx]
 
-            near = (current_low <= resistance * (1 + RETEST_TOLERANCE) and 
-                    current_low >= resistance * (1 - RETEST_TOLERANCE * 1.3))
+            near = (current_low <= resistance * (1 + retest_tol) and 
+                    current_low >= resistance * (1 - retest_tol * 1.4))
 
             if not near:
                 continue
 
             bullish = current_close > current_open
-            closed_above = current_close > resistance
-            bounce_from_low = (current_close - current_low) / current_low >= MIN_BOUNCE_PCT
+            closed_above = current_close > resistance * 0.998
+            bounce = (current_close - current_low) / current_low >= 0.003
 
-            if bullish and closed_above and bounce_from_low:
+            if bullish and closed_above and bounce:
                 vol_text = ""
-                if volumes is not None and len(volumes) > 15:
-                    avg_vol = np.mean(volumes[-16:-1])
+                if volumes is not None and len(volumes) > 12:
+                    avg_vol = np.mean(volumes[-13:-1])
                     if avg_vol > 0:
                         ratio = volumes[-1] / avg_vol
                         vol_text = f" | الحجم x{ratio:.1f}"
@@ -270,7 +280,7 @@ def check_role_reversal(sym, sector, tf_key, tf_info):
                     f"🟢 <b>تبادل أدوار صحيح</b>\n"
                     f"━━━━━━━━━━━━━━━━\n"
                     f"<b>${sym}</b>  |  {sector}\n"
-                    f"📊 الفريم: <b>{tf_info['name']}</b>\n"
+                    f"📊 الفريم: <b>{settings['name']}</b>\n"
                     f"━━━━━━━━━━━━━━━━\n"
                     f"📍 مقاومة سابقة: <b>${resistance:.2f}</b>\n"
                     f"📈 أعلى سعر بعد الاختراق: ${max_price_after:.2f} (+{move_pct*100:.1f}%)\n"
@@ -302,42 +312,37 @@ def check_all():
             continue
 
         ma50 = df_d["Close"].rolling(50).mean().iloc[-1]
-        if df_d["Close"].iloc[-1] < ma50 * 0.98:
+        if df_d["Close"].iloc[-1] < ma50 * 0.985:
             print("→ تحت MA50")
             continue
 
         found = False
-        for tf_key, tf_info in TIMEFRAMES.items():
+        for tf_key, settings in TF_SETTINGS.items():
             key = f"{sym}_{tf_key}"
-            if key in sent_signals and datetime.now() - sent_signals[key] < timedelta(hours=8):
+            if key in sent_signals and datetime.now() - sent_signals[key] < timedelta(hours=6):
                 continue
 
-            msg = check_role_reversal(sym, sector, tf_key, tf_info)
+            msg = check_role_reversal(sym, sector, tf_key, settings)
             if msg:
                 send_telegram(msg)
                 sent_signals[key] = datetime.now()
-                print(f"→ ✅ إشارة على {tf_info['name']}")
+                print(f"→ ✅ {settings['name']}")
                 total_signals += 1
                 found = True
-                time.sleep(1.1)
+                time.sleep(1.0)
                 break
 
         if not found:
             print("→ لا شيء")
 
-        time.sleep(0.35)
+        time.sleep(0.3)
 
-    summary = (
-        f"🔍 <b>انتهى الفحص</b>\n"
-        f"إشارات صحيحة: {total_signals}\n"
-        f"⏱ {datetime.now().strftime('%H:%M:%S')}"
-    )
-    send_telegram(summary)
+    send_telegram(f"🔍 انتهى الفحص\nإشارات: {total_signals}\n⏱ {datetime.now().strftime('%H:%M:%S')}")
     print(f"\n✅ إجمالي الإشارات: {total_signals}")
 
 # ==================== التشغيل ====================
 if __name__ == "__main__":
-    print("🚀 بوت تبادل الأدوار - نسخة محسنة (متعدد الفريمات)")
+    print("🚀 بوت تبادل الأدوار - النسخة النهائية")
     print(f"عدد الأسهم: {len(STOCKS)}")
     print("الفريمات: 30م | 1س | 4س | يومي | أسبوعي\n")
 
