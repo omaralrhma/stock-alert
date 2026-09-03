@@ -10,35 +10,20 @@ from datetime import datetime, timedelta
 TOKEN    = "8751470715:AAGqx90Zho44N7pzr42XHZs3Y0gcDZKP_V4"
 CHAT_IDS = ["615265045", "7775490993", "5574232437"]
 
-# إعدادات متغيرة حسب الفريم
+# إعدادات كل فريم (مبسطة ومستقرة)
 TF_SETTINGS = {
-    "30m": {
-        "interval": "30m", "period": "45d", "name": "30 دقيقة",
-        "swing": 3, "min_bars": 4, "max_bars": 25, "min_move": 0.006, "retest": 0.007
-    },
-    "1h": {
-        "interval": "1h", "period": "70d", "name": "ساعة",
-        "swing": 3, "min_bars": 5, "max_bars": 30, "min_move": 0.008, "retest": 0.008
-    },
-    "4h": {
-        "interval": "4h", "period": "120d", "name": "4 ساعات",
-        "swing": 4, "min_bars": 5, "max_bars": 35, "min_move": 0.011, "retest": 0.009
-    },
-    "1d": {
-        "interval": "1d", "period": "2y", "name": "يومي",
-        "swing": 4, "min_bars": 5, "max_bars": 40, "min_move": 0.015, "retest": 0.010
-    },
-    "1wk": {
-        "interval": "1wk", "period": "5y", "name": "أسبوعي",
-        "swing": 3, "min_bars": 3, "max_bars": 20, "min_move": 0.025, "retest": 0.012
-    },
+    "30m": {"interval": "30m", "period": "40d",  "name": "30 دقيقة", "swing": 3, "min_bars": 6, "max_bars": 28, "min_move": 0.008},
+    "1h":  {"interval": "1h",  "period": "60d",  "name": "ساعة",     "swing": 3, "min_bars": 5, "max_bars": 30, "min_move": 0.010},
+    "4h":  {"interval": "4h",  "period": "100d", "name": "4 ساعات",  "swing": 4, "min_bars": 5, "max_bars": 35, "min_move": 0.013},
+    "1d":  {"interval": "1d",  "period": "2y",   "name": "يومي",     "swing": 4, "min_bars": 5, "max_bars": 40, "min_move": 0.018},
+    "1wk": {"interval": "1wk", "period": "5y",   "name": "أسبوعي",   "swing": 3, "min_bars": 3, "max_bars": 18, "min_move": 0.030},
 }
 
 sent_signals = {}
 
-# ==================== قائمة الأسهم (~700 سهم) ====================
+# ==================== قائمة الأسهم (موسعة) ====================
 STOCKS = {
-    # ===== تكنولوجيا =====
+    # تكنولوجيا
     "AAPL":"💻 تكنولوجيا","MSFT":"💻 تكنولوجيا","NVDA":"💻 تكنولوجيا","GOOGL":"💻 تكنولوجيا","GOOG":"💻 تكنولوجيا",
     "META":"💻 تكنولوجيا","AMZN":"💻 تكنولوجيا","TSLA":"💻 تكنولوجيا","AMD":"💻 تكنولوجيا","INTC":"💻 تكنولوجيا",
     "CRM":"💻 تكنولوجيا","ORCL":"💻 تكنولوجيا","ADBE":"💻 تكنولوجيا","QCOM":"💻 تكنولوجيا","AMAT":"💻 تكنولوجيا",
@@ -47,21 +32,20 @@ STOCKS = {
     "PLTR":"💻 تكنولوجيا","AVGO":"💻 تكنولوجيا","MRVL":"💻 تكنولوجيا","ARM":"💻 تكنولوجيا","NOW":"💻 تكنولوجيا",
     "SMCI":"💻 تكنولوجيا","TXN":"💻 تكنولوجيا","SNPS":"💻 تكنولوجيا","CDNS":"💻 تكنولوجيا","TEAM":"💻 تكنولوجيا",
     "MDB":"💻 تكنولوجيا","SHOP":"💻 تكنولوجيا","ADSK":"💻 تكنولوجيا","ANSS":"💻 تكنولوجيا","ROP":"💻 تكنولوجيا",
-    "ENPH":"💻 تكنولوجيا","FSLR":"💻 تكنولوجيا","CSCO":"💻 تكنولوجيا","IBM":"💻 تكنولوجيا","INTU":"💻 تكنولوجيا",
-    "ADI":"💻 تكنولوجيا","NXPI":"💻 تكنولوجيا","MCHP":"💻 تكنولوجيا","ON":"💻 تكنولوجيا","MPWR":"💻 تكنولوجيا",
-    "KEYS":"💻 تكنولوجيا","TER":"💻 تكنولوجيا","SWKS":"💻 تكنولوجيا","QRVO":"💻 تكنولوجيا","WDC":"💻 تكنولوجيا",
-    "STX":"💻 تكنولوجيا","NTAP":"💻 تكنولوجيا","HPQ":"💻 تكنولوجيا","DELL":"💻 تكنولوجيا","HPE":"💻 تكنولوجيا",
-    "CDW":"💻 تكنولوجيا","CTSH":"💻 تكنولوجيا","IT":"💻 تكنولوجيا","ACN":"💻 تكنولوجيا","EPAM":"💻 تكنولوجيا",
-    "GEN":"💻 تكنولوجيا","FFIV":"💻 تكنولوجيا","AKAM":"💻 تكنولوجيا","VRSN":"💻 تكنولوجيا","OKTA":"💻 تكنولوجيا",
-    "PATH":"💻 تكنولوجيا","TOST":"💻 تكنولوجيا","U":"💻 تكنولوجيا","RBLX":"💻 تكنولوجيا","TTD":"💻 تكنولوجيا",
-    "APP":"💻 تكنولوجيا","ZI":"💻 تكنولوجيا","HUBS":"💻 تكنولوجيا","WDAY":"💻 تكنولوجيا","PAYC":"💻 تكنولوجيا",
-    "PCTY":"💻 تكنولوجيا","DOCU":"💻 تكنولوجيا","ZM":"💻 تكنولوجيا","DBX":"💻 تكنولوجيا","BOX":"💻 تكنولوجيا",
-    "ESTC":"💻 تكنولوجيا","DT":"💻 تكنولوجيا","CFLT":"💻 تكنولوجيا","S":"💻 تكنولوجيا","CR":"💻 تكنولوجيا",
-    "GTLB":"💻 تكنولوجيا","AI":"💻 تكنولوجيا","BBAI":"💻 تكنولوجيا","SOUN":"💻 تكنولوجيا","APPF":"💻 تكنولوجيا",
-    "ALRM":"💻 تكنولوجيا","DOCN":"💻 تكنولوجيا","FROG":"💻 تكنولوجيا","MNDY":"💻 تكنولوجيا","CYBR":"💻 تكنولوجيا",
-    "QLYS":"💻 تكنولوجيا","TENB":"💻 تكنولوجيا","RPD":"💻 تكنولوجيا","VRNS":"💻 تكنولوجيا","SAIL":"💻 تكنولوجيا",
+    "CSCO":"💻 تكنولوجيا","IBM":"💻 تكنولوجيا","INTU":"💻 تكنولوجيا","ADI":"💻 تكنولوجيا","NXPI":"💻 تكنولوجيا",
+    "MCHP":"💻 تكنولوجيا","ON":"💻 تكنولوجيا","MPWR":"💻 تكنولوجيا","KEYS":"💻 تكنولوجيا","TER":"💻 تكنولوجيا",
+    "WDC":"💻 تكنولوجيا","STX":"💻 تكنولوجيا","NTAP":"💻 تكنولوجيا","HPQ":"💻 تكنولوجيا","DELL":"💻 تكنولوجيا",
+    "HPE":"💻 تكنولوجيا","CDW":"💻 تكنولوجيا","CTSH":"💻 تكنولوجيا","ACN":"💻 تكنولوجيا","EPAM":"💻 تكنولوجيا",
+    "OKTA":"💻 تكنولوجيا","PATH":"💻 تكنولوجيا","U":"💻 تكنولوجيا","RBLX":"💻 تكنولوجيا","TTD":"💻 تكنولوجيا",
+    "APP":"💻 تكنولوجيا","HUBS":"💻 تكنولوجيا","WDAY":"💻 تكنولوجيا","DOCU":"💻 تكنولوجيا","ZM":"💻 تكنولوجيا",
+    "DBX":"💻 تكنولوجيا","BOX":"💻 تكنولوجيا","ESTC":"💻 تكنولوجيا","DT":"💻 تكنولوجيا","CFLT":"💻 تكنولوجيا",
+    "S":"💻 تكنولوجيا","CR":"💻 تكنولوجيا","GTLB":"💻 تكنولوجيا","AI":"💻 تكنولوجيا","BBAI":"💻 تكنولوجيا",
+    "SOUN":"💻 تكنولوجيا","APPF":"💻 تكنولوجيا","ALRM":"💻 تكنولوجيا","DOCN":"💻 تكنولوجيا","FROG":"💻 تكنولوجيا",
+    "MNDY":"💻 تكنولوجيا","CYBR":"💻 تكنولوجيا","QLYS":"💻 تكنولوجيا","TENB":"💻 تكنولوجيا","RPD":"💻 تكنولوجيا",
+    "VRNS":"💻 تكنولوجيا","SAIL":"💻 تكنولوجيا","GEN":"💻 تكنولوجيا","FFIV":"💻 تكنولوجيا","AKAM":"💻 تكنولوجيا",
+    "VRSN":"💻 تكنولوجيا","SWKS":"💻 تكنولوجيا","QRVO":"💻 تكنولوجيا","ENPH":"💻 تكنولوجيا","FSLR":"💻 تكنولوجيا",
 
-    # ===== مالية =====
+    # مالية
     "JPM":"🏦 مالية","BAC":"🏦 مالية","GS":"🏦 مالية","MS":"🏦 مالية","WFC":"🏦 مالية","C":"🏦 مالية",
     "BLK":"🏦 مالية","AXP":"🏦 مالية","V":"🏦 مالية","MA":"🏦 مالية","COF":"🏦 مالية","DFS":"🏦 مالية",
     "PYPL":"🏦 مالية","SQ":"🏦 مالية","COIN":"🏦 مالية","HOOD":"🏦 مالية","SPGI":"🏦 مالية","MCO":"🏦 مالية",
@@ -73,12 +57,12 @@ STOCKS = {
     "AIG":"🏦 مالية","MET":"🏦 مالية","PRU":"🏦 مالية","AFL":"🏦 مالية","HIG":"🏦 مالية","CINF":"🏦 مالية",
     "L":"🏦 مالية","WRB":"🏦 مالية","RE":"🏦 مالية","ACGL":"🏦 مالية","EG":"🏦 مالية","RNR":"🏦 مالية",
     "GL":"🏦 مالية","UNM":"🏦 مالية","LNC":"🏦 مالية","PFG":"🏦 مالية","VOYA":"🏦 مالية","EQH":"🏦 مالية",
-    "AEL":"🏦 مالية","FNF":"🏦 مالية","FAF":"🏦 مالية","ORI":"🏦 مالية","THG":"🏦 مالية","KNSL":"🏦 مالية",
-    "ERIE":"🏦 مالية","RLI":"🏦 مالية","SIGI":"🏦 مالية","PLMR":"🏦 مالية","ROOT":"🏦 مالية","UPST":"🏦 مالية",
-    "AFRM":"🏦 مالية","SOFI":"🏦 مالية","LC":"🏦 مالية","NU":"🏦 مالية","MELI":"🏦 مالية","FIS":"🏦 مالية",
-    "FISV":"🏦 مالية","GPN":"🏦 مالية","JKHY":"🏦 مالية","FLT":"🏦 مالية","WEX":"🏦 مالية","FOUR":"🏦 مالية",
+    "FNF":"🏦 مالية","FAF":"🏦 مالية","ORI":"🏦 مالية","THG":"🏦 مالية","KNSL":"🏦 مالية","ERIE":"🏦 مالية",
+    "RLI":"🏦 مالية","SIGI":"🏦 مالية","PLMR":"🏦 مالية","ROOT":"🏦 مالية","UPST":"🏦 مالية","AFRM":"🏦 مالية",
+    "SOFI":"🏦 مالية","LC":"🏦 مالية","NU":"🏦 مالية","MELI":"🏦 مالية","FIS":"🏦 مالية","FISV":"🏦 مالية",
+    "GPN":"🏦 مالية","JKHY":"🏦 مالية","FLT":"🏦 مالية","WEX":"🏦 مالية","FOUR":"🏦 مالية",
 
-    # ===== صحة =====
+    # صحة
     "JNJ":"🏥 صحة","PFE":"🏥 صحة","MRK":"🏥 صحة","ABBV":"🏥 صحة","LLY":"🏥 صحة","BMY":"🏥 صحة",
     "AMGN":"🏥 صحة","GILD":"🏥 صحة","BIIB":"🏥 صحة","VRTX":"🏥 صحة","REGN":"🏥 صحة","MRNA":"🏥 صحة",
     "TMO":"🏥 صحة","DHR":"🏥 صحة","ABT":"🏥 صحة","MDT":"🏥 صحة","SYK":"🏥 صحة","BSX":"🏥 صحة",
@@ -86,16 +70,15 @@ STOCKS = {
     "HOLX":"🏥 صحة","ILMN":"🏥 صحة","EXAS":"🏥 صحة","ALGN":"🏥 صحة","PODD":"🏥 صحة","TDOC":"🏥 صحة",
     "VEEV":"🏥 صحة","IQV":"🏥 صحة","CRL":"🏥 صحة","WAT":"🏥 صحة","MTD":"🏥 صحة","BIO":"🏥 صحة",
     "TECH":"🏥 صحة","RMD":"🏥 صحة","STE":"🏥 صحة","BAX":"🏥 صحة","TFX":"🏥 صحة","COO":"🏥 صحة",
-    "XRAY":"🏥 صحة","HSIC":"🏥 صحة","PDCO":"🏥 صحة","MCK":"🏥 صحة","CAH":"🏥 صحة","COR":"🏥 صحة",
-    "CVS":"🏥 صحة","WBA":"🏥 صحة","CI":"🏥 صحة","ELV":"🏥 صحة","HUM":"🏥 صحة","CNC":"🏥 صحة",
-    "MOH":"🏥 صحة","UNH":"🏥 صحة","DGX":"🏥 صحة","LH":"🏥 صحة","A":"🏥 صحة","GEHC":"🏥 صحة",
-    "SOLV":"🏥 صحة","RPRX":"🏥 صحة","INCY":"🏥 صحة","ALNY":"🏥 صحة","BMRN":"🏥 صحة","EXEL":"🏥 صحة",
-    "NBIX":"🏥 صحة","UTHR":"🏥 صحة","IONS":"🏥 صحة","SRPT":"🏥 صحة","RARE":"🏥 صحة","FOLD":"🏥 صحة",
-    "ARWR":"🏥 صحة","BEAM":"🏥 صحة","CRSP":"🏥 صحة","EDIT":"🏥 صحة","NTLA":"🏥 صحة","VERV":"🏥 صحة",
-    "RXRX":"🏥 صحة","SDGR":"🏥 صحة","CERT":"🏥 صحة","DOCS":"🏥 صحة","HIMS":"🏥 صحة","OSCR":"🏥 صحة",
-    "GH":"🏥 صحة","NTRA":"🏥 صحة","TXG":"🏥 صحة","PACB":"🏥 صحة","TWST":"🏥 صحة",
+    "XRAY":"🏥 صحة","HSIC":"🏥 صحة","MCK":"🏥 صحة","CAH":"🏥 صحة","COR":"🏥 صحة","CVS":"🏥 صحة",
+    "WBA":"🏥 صحة","CI":"🏥 صحة","ELV":"🏥 صحة","HUM":"🏥 صحة","CNC":"🏥 صحة","MOH":"🏥 صحة",
+    "UNH":"🏥 صحة","DGX":"🏥 صحة","LH":"🏥 صحة","A":"🏥 صحة","GEHC":"🏥 صحة","SOLV":"🏥 صحة",
+    "INCY":"🏥 صحة","ALNY":"🏥 صحة","BMRN":"🏥 صحة","EXEL":"🏥 صحة","NBIX":"🏥 صحة","UTHR":"🏥 صحة",
+    "IONS":"🏥 صحة","SRPT":"🏥 صحة","RARE":"🏥 صحة","FOLD":"🏥 صحة","ARWR":"🏥 صحة","BEAM":"🏥 صحة",
+    "CRSP":"🏥 صحة","EDIT":"🏥 صحة","NTLA":"🏥 صحة","VERV":"🏥 صحة","RXRX":"🏥 صحة","SDGR":"🏥 صحة",
+    "CERT":"🏥 صحة","DOCS":"🏥 صحة","HIMS":"🏥 صحة","OSCR":"🏥 صحة","GH":"🏥 صحة","NTRA":"🏥 صحة",
 
-    # ===== طاقة =====
+    # طاقة
     "XOM":"⛽ طاقة","CVX":"⛽ طاقة","COP":"⛽ طاقة","EOG":"⛽ طاقة","PXD":"⛽ طاقة","DVN":"⛽ طاقة",
     "MPC":"⛽ طاقة","VLO":"⛽ طاقة","PSX":"⛽ طاقة","HES":"⛽ طاقة","OXY":"⛽ طاقة","APA":"⛽ طاقة",
     "FANG":"⛽ طاقة","HAL":"⛽ طاقة","SLB":"⛽ طاقة","BKR":"⛽ طاقة","WMB":"⛽ طاقة","KMI":"⛽ طاقة",
@@ -104,10 +87,10 @@ STOCKS = {
     "CNX":"⛽ طاقة","SWN":"⛽ طاقة","GPOR":"⛽ طاقة","CRK":"⛽ طاقة","NOG":"⛽ طاقة","VTLE":"⛽ طاقة",
     "CIVI":"⛽ طاقة","MGY":"⛽ طاقة","CRC":"⛽ طاقة","BTU":"⛽ طاقة","ARCH":"⛽ طاقة","CEIX":"⛽ طاقة",
     "HCC":"⛽ طاقة","AMR":"⛽ طاقة","METC":"⛽ طاقة","NR":"⛽ طاقة","WTI":"⛽ طاقة","HP":"⛽ طاقة",
-    "PTEN":"⛽ طاقة","NBR":"⛽ طاقة","RIG":"⛽ طاقة","VAL":"⛽ طاقة","NE":"⛽ طاقة","DO":"⛽ طاقة",
-    "BORR":"⛽ طاقة","SDRL":"⛽ طاقة","NOV":"⛽ طاقة","FTI":"⛽ طاقة","WHD":"⛽ طاقة","LBRT":"⛽ طاقة",
+    "PTEN":"⛽ طاقة","NBR":"⛽ طاقة","RIG":"⛽ طاقة","VAL":"⛽ طاقة","NE":"⛽ طاقة","NOV":"⛽ طاقة",
+    "FTI":"⛽ طاقة","WHD":"⛽ طاقة","LBRT":"⛽ طاقة",
 
-    # ===== استهلاكي =====
+    # استهلاكي
     "WMT":"🛒 استهلاكي","TGT":"🛒 استهلاكي","COST":"🛒 استهلاكي","KR":"🛒 استهلاكي","DG":"🛒 استهلاكي",
     "DLTR":"🛒 استهلاكي","MCD":"🛒 استهلاكي","SBUX":"🛒 استهلاكي","CMG":"🛒 استهلاكي","YUM":"🛒 استهلاكي",
     "DPZ":"🛒 استهلاكي","QSR":"🛒 استهلاكي","NKE":"🛒 استهلاكي","LULU":"🛒 استهلاكي","UAA":"🛒 استهلاكي",
@@ -123,9 +106,8 @@ STOCKS = {
     "FL":"🛒 استهلاكي","SKX":"🛒 استهلاكي","CROX":"🛒 استهلاكي","DECK":"🛒 استهلاكي","ONON":"🛒 استهلاكي",
     "BIRK":"🛒 استهلاكي","VFC":"🛒 استهلاكي","PVH":"🛒 استهلاكي","RL":"🛒 استهلاكي","TPR":"🛒 استهلاكي",
     "CPRI":"🛒 استهلاكي","HBI":"🛒 استهلاكي","LEVI":"🛒 استهلاكي","COLM":"🛒 استهلاكي","GIII":"🛒 استهلاكي",
-    "CAL":"🛒 استهلاكي","WWW":"🛒 استهلاكي","SHOO":"🛒 استهلاكي","BOOT":"🛒 استهلاكي","VSCO":"🛒 استهلاكي",
 
-    # ===== صناعي =====
+    # صناعي
     "BA":"🏭 صناعي","LMT":"🏭 صناعي","RTX":"🏭 صناعي","NOC":"🏭 صناعي","GD":"🏭 صناعي","TDG":"🏭 صناعي",
     "HWM":"🏭 صناعي","CAT":"🏭 صناعي","DE":"🏭 صناعي","EMR":"🏭 صناعي","ETN":"🏭 صناعي","PH":"🏭 صناعي",
     "ROK":"🏭 صناعي","AME":"🏭 صناعي","CARR":"🏭 صناعي","TT":"🏭 صناعي","UPS":"🏭 صناعي","FDX":"🏭 صناعي",
@@ -138,9 +120,9 @@ STOCKS = {
     "EXP":"🏭 صناعي","CRH":"🏭 صناعي","CX":"🏭 صناعي","PKG":"🏭 صناعي","IP":"🏭 صناعي","SEE":"🏭 صناعي",
     "SON":"🏭 صناعي","AVY":"🏭 صناعي","CCK":"🏭 صناعي","GEF":"🏭 صناعي","SLGN":"🏭 صناعي","ATR":"🏭 صناعي",
     "AMCR":"🏭 صناعي","GPK":"🏭 صناعي","BERY":"🏭 صناعي","URI":"🏭 صناعي","FAST":"🏭 صناعي","GWW":"🏭 صناعي",
-    "MSM":"🏭 صناعي","WCC":"🏭 صناعي","AIT":"🏭 صناعي","DXPE":"🏭 صناعي","WSO":"🏭 صناعي","POOL":"🏭 صناعي",
+    "MSM":"🏭 صناعي","WCC":"🏭 صناعي","AIT":"🏭 صناعي","WSO":"🏭 صناعي","POOL":"🏭 صناعي",
 
-    # ===== اتصالات وعقارات ومرافق =====
+    # اتصالات وعقارات ومرافق
     "AMT":"📡 اتصالات","CCI":"📡 اتصالات","EQIX":"📡 اتصالات","T":"📡 اتصالات","VZ":"📡 اتصالات",
     "TMUS":"📡 اتصالات","CHTR":"📡 اتصالات","CMCSA":"📡 اتصالات","DIS":"📡 اتصالات","NFLX":"📡 اتصالات",
     "PARA":"📡 اتصالات","WBD":"📡 اتصالات","FOXA":"📡 اتصالات","FOX":"📡 اتصالات","NYT":"📡 اتصالات",
@@ -158,7 +140,7 @@ STOCKS = {
     "POR":"⚡ مرافق","BKH":"⚡ مرافق","NWE":"⚡ مرافق","AVA":"⚡ مرافق","MGEE":"⚡ مرافق",
     "OTTR":"⚡ مرافق","ALE":"⚡ مرافق","PCG":"⚡ مرافق",
 
-    # ===== مؤشرات وETFs =====
+    # مؤشرات
     "SPY":"📊 مؤشر","QQQ":"📊 مؤشر","IWM":"📊 مؤشر","DIA":"📊 مؤشر","VTI":"📊 مؤشر",
     "XLK":"📊 مؤشر","XLF":"📊 مؤشر","XLE":"📊 مؤشر","XLV":"📊 مؤشر","XLI":"📊 مؤشر",
     "XLY":"📊 مؤشر","XLP":"📊 مؤشر","XLU":"📊 مؤشر","XLB":"📊 مؤشر","XLRE":"📊 مؤشر",
@@ -178,7 +160,7 @@ def send_telegram(msg):
     for cid in CHAT_IDS:
         try:
             requests.post(url, data={"chat_id": cid, "text": msg, "parse_mode": "HTML"}, timeout=12)
-            time.sleep(0.35)
+            time.sleep(0.4)
         except Exception as e:
             print(f"خطأ تيليجرام: {e}")
 
@@ -189,160 +171,141 @@ def get_data(sym, interval, period):
             return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
-        df = df.dropna()
-        return df
+        return df.dropna()
     except:
         return None
 
-def find_swings(highs, lows, length=4):
+def find_swing_highs(highs, length):
     n = len(highs)
-    swing_highs = []
+    swings = []
     for i in range(length, n - length):
-        if highs[i] == max(highs[i-length : i+length+1]):
-            swing_highs.append((i, highs[i]))
-    return swing_highs
+        if highs[i] == max(highs[i-length:i+length+1]):
+            swings.append((i, highs[i]))
+    return swings
 
-# ==================== معادلة تبادل الأدوار ====================
+# ==================== معادلة تبادل الأدوار النظيفة ====================
 def check_role_reversal(sym, sector, tf_key, settings):
     try:
         df = get_data(sym, settings["interval"], settings["period"])
-        if df is None or len(df) < 40:
+        if df is None or len(df) < 45:
             return None
 
         closes = df["Close"].values
         opens  = df["Open"].values
         highs  = df["High"].values
         lows   = df["Low"].values
-        volumes = df["Volume"].values if "Volume" in df.columns else None
 
-        swing_length = settings["swing"]
-        min_bars     = settings["min_bars"]
-        max_bars     = settings["max_bars"]
-        min_move     = settings["min_move"]
-        retest_tol   = settings["retest"]
-
-        swing_highs = find_swings(highs, lows, swing_length)
-        if len(swing_highs) < 2:
+        swings = find_swing_highs(highs, settings["swing"])
+        if len(swings) < 2:
             return None
 
-        current_idx = len(df) - 1
+        current = len(df) - 1
 
-        for swing_idx, resistance in reversed(swing_highs[:-1]):
-            if current_idx - swing_idx < min_bars + 2:
+        for swing_idx, resistance in reversed(swings[-6:-1]):
+            if current - swing_idx < settings["min_bars"] + 3:
                 continue
 
             break_idx = None
-            for i in range(swing_idx + 1, current_idx - min_bars):
-                if closes[i] > resistance * 1.0015:
+            for i in range(swing_idx + 2, current - settings["min_bars"]):
+                if closes[i] > resistance * 1.003:
                     break_idx = i
                     break
+
             if break_idx is None:
                 continue
 
-            bars_after = current_idx - break_idx
-            if bars_after < min_bars or bars_after > max_bars:
+            bars_after = current - break_idx
+            if not (settings["min_bars"] <= bars_after <= settings["max_bars"]):
                 continue
 
-            max_price_after = max(highs[break_idx : current_idx+1])
-            move_pct = (max_price_after - resistance) / resistance
-            if move_pct < min_move:
+            max_after = np.max(highs[break_idx:current+1])
+            move_pct = (max_after - resistance) / resistance
+            if move_pct < settings["min_move"]:
                 continue
 
-            mid_point = break_idx + max(2, bars_after // 3)
-            if mid_point < current_idx:
-                mid_low = min(lows[break_idx : mid_point+1])
-                if mid_low < resistance * 0.988:
-                    continue
+            curr_low = lows[current]
+            curr_close = closes[current]
+            curr_open = opens[current]
 
-            current_low   = lows[current_idx]
-            current_close = closes[current_idx]
-            current_open  = opens[current_idx]
+            tolerance = resistance * 0.008
+            is_near = (curr_low <= resistance + tolerance) and (curr_low >= resistance - tolerance * 1.5)
 
-            near = (current_low <= resistance * (1 + retest_tol) and 
-                    current_low >= resistance * (1 - retest_tol * 1.4))
-
-            if not near:
+            if not is_near:
                 continue
 
-            bullish = current_close > current_open
-            closed_above = current_close > resistance * 0.998
-            bounce = (current_close - current_low) / current_low >= 0.003
+            is_bullish = curr_close > curr_open
+            closed_above = curr_close > resistance
+            has_bounce = (curr_close - curr_low) / curr_low > 0.004
 
-            if bullish and closed_above and bounce:
-                vol_text = ""
-                if volumes is not None and len(volumes) > 12:
-                    avg_vol = np.mean(volumes[-13:-1])
-                    if avg_vol > 0:
-                        ratio = volumes[-1] / avg_vol
-                        vol_text = f" | الحجم x{ratio:.1f}"
-
+            if is_bullish and closed_above and has_bounce:
                 msg = (
-                    f"🟢 <b>تبادل أدوار صحيح</b>\n"
+                    f"🟢 <b>تبادل أدوار</b>\n"
                     f"━━━━━━━━━━━━━━━━\n"
-                    f"<b>${sym}</b>  |  {sector}\n"
+                    f"<b>${sym}</b> | {sector}\n"
                     f"📊 الفريم: <b>{settings['name']}</b>\n"
                     f"━━━━━━━━━━━━━━━━\n"
-                    f"📍 مقاومة سابقة: <b>${resistance:.2f}</b>\n"
-                    f"📈 أعلى سعر بعد الاختراق: ${max_price_after:.2f} (+{move_pct*100:.1f}%)\n"
-                    f"💰 السعر الحالي: <b>${current_close:.2f}</b>\n"
-                    f"⏱ عدد الشموع بعد الاختراق: {bars_after}{vol_text}\n"
+                    f"📍 المقاومة السابقة: ${resistance:.2f}\n"
+                    f"📈 أعلى سعر بعد الاختراق: ${max_after:.2f} (+{move_pct*100:.1f}%)\n"
+                    f"💰 السعر الحالي: ${curr_close:.2f}\n"
+                    f"⏱ الشموع بعد الاختراق: {bars_after}\n"
                     f"━━━━━━━━━━━━━━━━\n"
-                    f"✅ اختراق + مشي + رجوع تدريجي + ارتداد"
+                    f"✅ اختراق + مشي + اختبار + ارتداد"
                 )
                 return msg
 
         return None
-    except Exception as e:
+    except:
         return None
 
 # ==================== الفحص الرئيسي ====================
 def check_all():
-    print(f"\n{'='*55}")
+    print(f"\n{'='*50}")
     print(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"{'='*55}")
+    print(f"{'='*50}")
 
-    total_signals = 0
+    total = 0
 
     for sym, sector in STOCKS.items():
         print(f"▶ {sym}", end=" ")
 
-        df_d = get_data(sym, "1d", "1y")
-        if df_d is None or len(df_d) < 50:
-            print("→ بيانات ناقصة")
+        df_daily = get_data(sym, "1d", "8mo")
+        if df_daily is None or len(df_daily) < 55:
+            print("→ لا بيانات")
             continue
 
-        ma50 = df_d["Close"].rolling(50).mean().iloc[-1]
-        if df_d["Close"].iloc[-1] < ma50 * 0.985:
+        ma50 = df_daily["Close"].rolling(50).mean().iloc[-1]
+        if df_daily["Close"].iloc[-1] < ma50 * 0.99:
             print("→ تحت MA50")
             continue
 
         found = False
         for tf_key, settings in TF_SETTINGS.items():
             key = f"{sym}_{tf_key}"
-            if key in sent_signals and datetime.now() - sent_signals[key] < timedelta(hours=6):
-                continue
+            if key in sent_signals:
+                if datetime.now() - sent_signals[key] < timedelta(hours=7):
+                    continue
 
             msg = check_role_reversal(sym, sector, tf_key, settings)
             if msg:
                 send_telegram(msg)
                 sent_signals[key] = datetime.now()
                 print(f"→ ✅ {settings['name']}")
-                total_signals += 1
+                total += 1
                 found = True
-                time.sleep(1.0)
+                time.sleep(1.2)
                 break
 
         if not found:
             print("→ لا شيء")
 
-        time.sleep(0.3)
+        time.sleep(0.35)
 
-    send_telegram(f"🔍 انتهى الفحص\nإشارات: {total_signals}\n⏱ {datetime.now().strftime('%H:%M:%S')}")
-    print(f"\n✅ إجمالي الإشارات: {total_signals}")
+    send_telegram(f"🔍 انتهى الفحص\nإشارات: {total}\n⏱ {datetime.now().strftime('%H:%M')}")
+    print(f"\n✅ إجمالي: {total}")
 
 # ==================== التشغيل ====================
 if __name__ == "__main__":
-    print("🚀 بوت تبادل الأدوار - النسخة النهائية")
+    print("🚀 بوت تبادل الأدوار - نسخة نظيفة ومستقرة")
     print(f"عدد الأسهم: {len(STOCKS)}")
     print("الفريمات: 30م | 1س | 4س | يومي | أسبوعي\n")
 
