@@ -6,11 +6,10 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 
-# ==================== الإعدادات ====================
+# ==================== الإعدادات (نفس الربط القديم) ====================
 TOKEN    = "8751470715:AAGqx90Zho44N7pzr42XHZs3Y0gcDZKP_V4"
 CHAT_IDS = ["615265045", "7775490993", "5574232437"]
 
-# الفريمات المطلوبة
 TIMEFRAMES = {
     "30m": {"interval": "30m", "period": "60d",  "name": "30 دقيقة"},
     "1h":  {"interval": "1h",  "period": "90d",  "name": "ساعة"},
@@ -19,19 +18,20 @@ TIMEFRAMES = {
     "1wk": {"interval": "1wk", "period": "5y",   "name": "أسبوعي"},
 }
 
-# إعدادات تبادل الأدوار
-SWING_LENGTH       = 4
-MIN_BARS_AFTER     = 5
-MAX_BARS_AFTER     = 40
-MIN_MOVE_PCT       = 0.012
-RETEST_TOLERANCE   = 0.009
-MIN_BOUNCE_PCT     = 0.004
+# ==================== شروط Pine المستبدلة (من مؤشرك) ====================
+P_PIVOT_MINOR   = 3
+P_PIVOT_MAJOR   = 7
+P_PROX_PCT      = 0.015   # 1.5% دمج القمة الصغرى مع الكبرى
+P_PCT_THRESH    = 0.03    # 3% اختراق / كسر مطلوب
+P_MIN_BARS      = 3       # البقاء فوق / تحت
+P_RETEST_MARGIN = 0.005   # 0.5% سماح إعادة الاختبار
+P_LOOKBACK      = 500     # نحاكي ذاكرة Pine من آخر 500 شمعة فقط (كفاية + سرعة)
+P_SIGNAL_WINDOW = 3       # نقبل إشارة ظهرت في آخر 3 شموع (عشان فحص 90 دقيقة ما يفوت 30m)
 
 sent_signals = {}
 
-# ==================== قائمة الأسهم (~700 سهم) ====================
+# ==================== قائمة الأسهم (نفس القائمة القديمة) ====================
 STOCKS = {
-    # ===== تكنولوجيا =====
     "AAPL":"💻 تكنولوجيا","MSFT":"💻 تكنولوجيا","NVDA":"💻 تكنولوجيا","GOOGL":"💻 تكنولوجيا","GOOG":"💻 تكنولوجيا",
     "META":"💻 تكنولوجيا","AMZN":"💻 تكنولوجيا","TSLA":"💻 تكنولوجيا","AMD":"💻 تكنولوجيا","INTC":"💻 تكنولوجيا",
     "CRM":"💻 تكنولوجيا","ORCL":"💻 تكنولوجيا","ADBE":"💻 تكنولوجيا","QCOM":"💻 تكنولوجيا","AMAT":"💻 تكنولوجيا",
@@ -50,19 +50,15 @@ STOCKS = {
     "APP":"💻 تكنولوجيا","ZI":"💻 تكنولوجيا","HUBS":"💻 تكنولوجيا","WDAY":"💻 تكنولوجيا","PAYC":"💻 تكنولوجيا",
     "PCTY":"💻 تكنولوجيا","DOCU":"💻 تكنولوجيا","ZM":"💻 تكنولوجيا","DBX":"💻 تكنولوجيا","BOX":"💻 تكنولوجيا",
     "ESTC":"💻 تكنولوجيا","DT":"💻 تكنولوجيا","CFLT":"💻 تكنولوجيا","S":"💻 تكنولوجيا","CR":"💻 تكنولوجيا",
-    "GTLB":"💻 تكنولوجيا","AI":"💻 تكنولوجيا","BBAI":"💻 تكنولوجيا","SOUN":"💻 تكنولوجيا","SMCI":"💻 تكنولوجيا",
+    "GTLB":"💻 تكنولوجيا","AI":"💻 تكنولوجيا","BBAI":"💻 تكنولوجيا","SOUN":"💻 تكنولوجيا",
     "APPF":"💻 تكنولوجيا","ALRM":"💻 تكنولوجيا","DOCN":"💻 تكنولوجيا","FROG":"💻 تكنولوجيا","MNDY":"💻 تكنولوجيا",
-    "GTLB":"💻 تكنولوجيا","S":"💻 تكنولوجيا","NET":"💻 تكنولوجيا","DDOG":"💻 تكنولوجيا","ZS":"💻 تكنولوجيا",
-    "CRWD":"💻 تكنولوجيا","PANW":"💻 تكنولوجيا","FTNT":"💻 تكنولوجيا","OKTA":"💻 تكنولوجيا","CYBR":"💻 تكنولوجيا",
-    "QLYS":"💻 تكنولوجيا","TENB":"💻 تكنولوجيا","RPD":"💻 تكنولوجيا","VRNS":"💻 تكنولوجيا","SAIL":"💻 تكنولوجيا",
-
-    # ===== مالية =====
+    "CYBR":"💻 تكنولوجيا","QLYS":"💻 تكنولوجيا","TENB":"💻 تكنولوجيا","RPD":"💻 تكنولوجيا","VRNS":"💻 تكنولوجيا","SAIL":"💻 تكنولوجيا",
     "JPM":"🏦 مالية","BAC":"🏦 مالية","GS":"🏦 مالية","MS":"🏦 مالية","WFC":"🏦 مالية","C":"🏦 مالية",
     "BLK":"🏦 مالية","AXP":"🏦 مالية","V":"🏦 مالية","MA":"🏦 مالية","COF":"🏦 مالية","DFS":"🏦 مالية",
     "PYPL":"🏦 مالية","SQ":"🏦 مالية","COIN":"🏦 مالية","HOOD":"🏦 مالية","SPGI":"🏦 مالية","MCO":"🏦 مالية",
     "ICE":"🏦 مالية","CME":"🏦 مالية","NDAQ":"🏦 مالية","CBOE":"🏦 مالية","MSCI":"🏦 مالية","FDS":"🏦 مالية",
     "USB":"🏦 مالية","PNC":"🏦 مالية","TFC":"🏦 مالية","SCHW":"🏦 مالية","BK":"🏦 مالية","STT":"🏦 مالية",
-    "TROW":"🏦 مالية","BEN":"🏦 مالية","IVZ":"🏦 مالية","AMG":"🏦 مالية","AMP":"🏦 مالية","RJ":"🏦 مالية",
+    "TROW":"🏦 مالية","BEN":"🏦 مالية","IVZ":"🏦 مالية","AMG":"🏦 مالية","AMP":"🏦 مالية",
     "LPLA":"🏦 مالية","SF":"🏦 مالية","RJF":"🏦 مالية","HLI":"🏦 مالية","EVR":"🏦 مالية","PIPR":"🏦 مالية",
     "MC":"🏦 مالية","LAZ":"🏦 مالية","ALL":"🏦 مالية","TRV":"🏦 مالية","PGR":"🏦 مالية","CB":"🏦 مالية",
     "AIG":"🏦 مالية","MET":"🏦 مالية","PRU":"🏦 مالية","AFL":"🏦 مالية","HIG":"🏦 مالية","CINF":"🏦 مالية",
@@ -72,9 +68,6 @@ STOCKS = {
     "ERIE":"🏦 مالية","RLI":"🏦 مالية","SIGI":"🏦 مالية","PLMR":"🏦 مالية","ROOT":"🏦 مالية","UPST":"🏦 مالية",
     "AFRM":"🏦 مالية","SOFI":"🏦 مالية","LC":"🏦 مالية","NU":"🏦 مالية","MELI":"🏦 مالية","FIS":"🏦 مالية",
     "FISV":"🏦 مالية","GPN":"🏦 مالية","JKHY":"🏦 مالية","FLT":"🏦 مالية","WEX":"🏦 مالية","FOUR":"🏦 مالية",
-    "TOST":"🏦 مالية","SQ":"🏦 مالية","PYPL":"🏦 مالية","V":"🏦 مالية","MA":"🏦 مالية","AXP":"🏦 مالية",
-
-    # ===== صحة =====
     "JNJ":"🏥 صحة","PFE":"🏥 صحة","MRK":"🏥 صحة","ABBV":"🏥 صحة","LLY":"🏥 صحة","BMY":"🏥 صحة",
     "AMGN":"🏥 صحة","GILD":"🏥 صحة","BIIB":"🏥 صحة","VRTX":"🏥 صحة","REGN":"🏥 صحة","MRNA":"🏥 صحة",
     "TMO":"🏥 صحة","DHR":"🏥 صحة","ABT":"🏥 صحة","MDT":"🏥 صحة","SYK":"🏥 صحة","BSX":"🏥 صحة",
@@ -89,9 +82,7 @@ STOCKS = {
     "NBIX":"🏥 صحة","UTHR":"🏥 صحة","IONS":"🏥 صحة","SRPT":"🏥 صحة","RARE":"🏥 صحة","FOLD":"🏥 صحة",
     "ARWR":"🏥 صحة","BEAM":"🏥 صحة","CRSP":"🏥 صحة","EDIT":"🏥 صحة","NTLA":"🏥 صحة","VERV":"🏥 صحة",
     "RXRX":"🏥 صحة","SDGR":"🏥 صحة","CERT":"🏥 صحة","DOCS":"🏥 صحة","HIMS":"🏥 صحة","OSCR":"🏥 صحة",
-    "GH":"🏥 صحة","NTRA":"🏥 صحة","TXG":"🏥 صحة","PACB":"🏥 صحة","ILMN":"🏥 صحة","TWST":"🏥 صحة",
-
-    # ===== طاقة =====
+    "GH":"🏥 صحة","NTRA":"🏥 صحة","TXG":"🏥 صحة","PACB":"🏥 صحة","TWST":"🏥 صحة",
     "XOM":"⛽️ طاقة","CVX":"⛽️ طاقة","COP":"⛽️ طاقة","EOG":"⛽️ طاقة","PXD":"⛽️ طاقة","DVN":"⛽️ طاقة",
     "MPC":"⛽️ طاقة","VLO":"⛽️ طاقة","PSX":"⛽️ طاقة","HES":"⛽️ طاقة","OXY":"⛽️ طاقة","APA":"⛽️ طاقة",
     "FANG":"⛽️ طاقة","HAL":"⛽️ طاقة","SLB":"⛽️ طاقة","BKR":"⛽️ طاقة","WMB":"⛽️ طاقة","KMI":"⛽️ طاقة",
@@ -102,8 +93,6 @@ STOCKS = {
     "HCC":"⛽️ طاقة","AMR":"⛽️ طاقة","METC":"⛽️ طاقة","NR":"⛽️ طاقة","WTI":"⛽️ طاقة","HP":"⛽️ طاقة",
     "PTEN":"⛽️ طاقة","NBR":"⛽️ طاقة","RIG":"⛽️ طاقة","VAL":"⛽️ طاقة","NE":"⛽️ طاقة","DO":"⛽️ طاقة",
     "BORR":"⛽️ طاقة","SDRL":"⛽️ طاقة","NOV":"⛽️ طاقة","FTI":"⛽️ طاقة","WHD":"⛽️ طاقة","LBRT":"⛽️ طاقة",
-
-    # ===== استهلاكي =====
     "WMT":"🛒 استهلاكي","TGT":"🛒 استهلاكي","COST":"🛒 استهلاكي","KR":"🛒 استهلاكي","DG":"🛒 استهلاكي",
     "DLTR":"🛒 استهلاكي","MCD":"🛒 استهلاكي","SBUX":"🛒 استهلاكي","CMG":"🛒 استهلاكي","YUM":"🛒 استهلاكي",
     "DPZ":"🛒 استهلاكي","QSR":"🛒 استهلاكي","NKE":"🛒 استهلاكي","LULU":"🛒 استهلاكي","UAA":"🛒 استهلاكي",
@@ -120,8 +109,6 @@ STOCKS = {
     "BIRK":"🛒 استهلاكي","VFC":"🛒 استهلاكي","PVH":"🛒 استهلاكي","RL":"🛒 استهلاكي","TPR":"🛒 استهلاكي",
     "CPRI":"🛒 استهلاكي","HBI":"🛒 استهلاكي","LEVI":"🛒 استهلاكي","COLM":"🛒 استهلاكي","GIII":"🛒 استهلاكي",
     "CAL":"🛒 استهلاكي","WWW":"🛒 استهلاكي","SHOO":"🛒 استهلاكي","BOOT":"🛒 استهلاكي","VSCO":"🛒 استهلاكي",
-
-    # ===== صناعي =====
     "BA":"🏭 صناعي","LMT":"🏭 صناعي","RTX":"🏭 صناعي","NOC":"🏭 صناعي","GD":"🏭 صناعي","TDG":"🏭 صناعي",
     "HWM":"🏭 صناعي","CAT":"🏭 صناعي","DE":"🏭 صناعي","EMR":"🏭 صناعي","ETN":"🏭 صناعي","PH":"🏭 صناعي",
     "ROK":"🏭 صناعي","AME":"🏭 صناعي","CARR":"🏭 صناعي","TT":"🏭 صناعي","UPS":"🏭 صناعي","FDX":"🏭 صناعي",
@@ -135,8 +122,6 @@ STOCKS = {
     "SON":"🏭 صناعي","AVY":"🏭 صناعي","CCK":"🏭 صناعي","GEF":"🏭 صناعي","SLGN":"🏭 صناعي","ATR":"🏭 صناعي",
     "AMCR":"🏭 صناعي","GPK":"🏭 صناعي","BERY":"🏭 صناعي","URI":"🏭 صناعي","FAST":"🏭 صناعي","GWW":"🏭 صناعي",
     "MSM":"🏭 صناعي","WCC":"🏭 صناعي","AIT":"🏭 صناعي","DXPE":"🏭 صناعي","WSO":"🏭 صناعي","POOL":"🏭 صناعي",
-
-    # ===== اتصالات وعقارات ومرافق =====
     "AMT":"📡 اتصالات","CCI":"📡 اتصالات","EQIX":"📡 اتصالات","T":"📡 اتصالات","VZ":"📡 اتصالات",
     "TMUS":"📡 اتصالات","CHTR":"📡 اتصالات","CMCSA":"📡 اتصالات","DIS":"📡 اتصالات","NFLX":"📡 اتصالات",
     "PARA":"📡 اتصالات","WBD":"📡 اتصالات","FOXA":"📡 اتصالات","FOX":"📡 اتصالات","NYT":"📡 اتصالات",
@@ -152,9 +137,7 @@ STOCKS = {
     "DTE":"⚡️ مرافق","AEE":"⚡️ مرافق","CMS":"⚡️ مرافق","CNP":"⚡️ مرافق","NI":"⚡️ مرافق",
     "LNT":"⚡️ مرافق","EVRG":"⚡️ مرافق","PNW":"⚡️ مرافق","IDA":"⚡️ مرافق","OGE":"⚡️ مرافق",
     "POR":"⚡️ مرافق","BKH":"⚡️ مرافق","NWE":"⚡️ مرافق","AVA":"⚡️ مرافق","MGEE":"⚡️ مرافق",
-    "OTTR":"⚡️ مرافق","ALE":"⚡️ مرافق","PCG":"⚡️ مرافق","EIX":"⚡️ مرافق","SRE":"⚡️ مرافق",
-
-    # ===== مؤشرات وETFs =====
+    "OTTR":"⚡️ مرافق","ALE":"⚡️ مرافق","PCG":"⚡️ مرافق",
     "SPY":"📊 مؤشر","QQQ":"📊 مؤشر","IWM":"📊 مؤشر","DIA":"📊 مؤشر","VTI":"📊 مؤشر",
     "XLK":"📊 مؤشر","XLF":"📊 مؤشر","XLE":"📊 مؤشر","XLV":"📊 مؤشر","XLI":"📊 مؤشر",
     "XLY":"📊 مؤشر","XLP":"📊 مؤشر","XLU":"📊 مؤشر","XLB":"📊 مؤشر","XLRE":"📊 مؤشر",
@@ -168,7 +151,7 @@ STOCKS = {
     "COPX":"📊 مؤشر","JJC":"📊 مؤشر","USO":"📊 مؤشر","UNG":"📊 مؤشر","BNO":"📊 مؤشر",
 }
 
-# ==================== دوال مساعدة ====================
+# ==================== دوال مساعدة (نفسها) ====================
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     for cid in CHAT_IDS:
@@ -187,137 +170,262 @@ def get_data(sym, interval, period):
             df.columns = df.columns.get_level_values(0)
         df = df.dropna()
         return df
-    except:
+    except Exception:
         return None
 
-def find_swings(highs, lows, length=4):
-    n = len(highs)
-    swing_highs = []
-    for i in range(length, n - length):
-        if highs[i] == max(highs[i-length : i+length+1]):
-            swing_highs.append((i, highs[i]))
-    return swing_highs
+# ==================== ترجمة مؤشر Pine إلى Python (استبدال كامل) ====================
+# Pine الأصلي:
+#  pivot_minor=3, pivot_major=7, prox=1.5%, pct=3%, min_bars=3, retest=0.5%
+#  شراء: قمة -> إغلاق فوقها -> high يحقق +3% -> بقاء >3 شموع فوق -> low يلمس القمة +0.5%
+#  بيع: عكسها على القيعان
 
-# ==================== معادلة تبادل الأدوار المحسّنة ====================
-def check_role_reversal(sym, sector, tf_key, tf_info):
+def _build_pivot_arrays(high_vals, low_vals):
+    n = len(high_vals)
+    hs = pd.Series(high_vals)
+    ls = pd.Series(low_vals)
+
+    w_maj = P_PIVOT_MAJOR * 2 + 1   # 15
+    w_min = P_PIVOT_MINOR * 2 + 1   # 7
+
+    roll_max_maj = hs.rolling(w_maj, min_periods=w_maj).max().values
+    roll_min_maj = ls.rolling(w_maj, min_periods=w_maj).min().values
+    roll_max_min = hs.rolling(w_min, min_periods=w_min).max().values
+    roll_min_min = ls.rolling(w_min, min_periods=w_min).min().values
+
+    sh7 = np.full(n, np.nan); sh7[P_PIVOT_MAJOR:] = high_vals[:-P_PIVOT_MAJOR]
+    sl7 = np.full(n, np.nan); sl7[P_PIVOT_MAJOR:] = low_vals[:-P_PIVOT_MAJOR]
+    sh3 = np.full(n, np.nan); sh3[P_PIVOT_MINOR:] = high_vals[:-P_PIVOT_MINOR]
+    sl3 = np.full(n, np.nan); sl3[P_PIVOT_MINOR:] = low_vals[:-P_PIVOT_MINOR]
+
+    maj_ph = np.where(roll_max_maj == sh7, sh7, np.nan)
+    maj_pl = np.where(roll_min_maj == sl7, sl7, np.nan)
+    min_ph = np.where(roll_max_min == sh3, sh3, np.nan)
+    min_pl = np.where(roll_min_min == sl3, sl3, np.nan)
+    return maj_ph, maj_pl, min_ph, min_pl
+
+def check_pine_reversal(sym, sector, tf_key, tf_info):
+    """ترجمة حرفية لمنطق Pine. ترجع (signal_type, msg) أو (None, None)."""
     try:
         df = get_data(sym, tf_info["interval"], tf_info["period"])
-        if df is None or len(df) < 50:
-            return None
+        if df is None or len(df) < 60:
+            return None, None
 
-        closes = df["Close"].values
-        opens  = df["Open"].values
-        highs  = df["High"].values
-        lows   = df["Low"].values
-        volumes = df["Volume"].values if "Volume" in df.columns else None
+        high_vals  = df["High"].values.astype(float)
+        low_vals   = df["Low"].values.astype(float)
+        close_vals = df["Close"].values.astype(float)
+        vols = df["Volume"].values if "Volume" in df.columns else None
+        n = len(df)
 
-        swing_highs = find_swings(highs, lows, SWING_LENGTH)
-        if len(swing_highs) < 2:
-            return None
+        maj_ph, maj_pl, min_ph, min_pl = _build_pivot_arrays(high_vals, low_vals)
 
-        current_idx = len(df) - 1
+        start = max(0, n - P_LOOKBACK)
 
-        for swing_idx, resistance in reversed(swing_highs[:-1]):
-            if current_idx - swing_idx < MIN_BARS_AFTER + 3:
-                continue
+        # last_major قبل بداية المحاكاة (عشان الدمج)
+        last_major_ph = np.nan
+        last_major_pl = np.nan
+        pre_ph = np.where(~np.isnan(maj_ph[:start]))[0] if start > 0 else np.array([], dtype=int)
+        pre_pl = np.where(~np.isnan(maj_pl[:start]))[0] if start > 0 else np.array([], dtype=int)
+        if len(pre_ph) > 0:
+            last_major_ph = float(maj_ph[pre_ph[-1]])
+        if len(pre_pl) > 0:
+            last_major_pl = float(maj_pl[pre_pl[-1]])
 
-            break_idx = None
-            for i in range(swing_idx + 1, current_idx - MIN_BARS_AFTER):
-                if closes[i] > resistance * 1.002:
-                    break_idx = i
-                    break
-            if break_idx is None:
-                continue
+        curr_ph = np.nan; ph_state = 0; ph_broken = False; bars_above = 0; ph_setup = -1
+        curr_pl = np.nan; pl_state = 0; pl_broken = False; bars_below = 0; pl_setup = -1
 
-            bars_after = current_idx - break_idx
-            if bars_after < MIN_BARS_AFTER or bars_after > MAX_BARS_AFTER:
-                continue
+        buy_idx = -1;  buy_info = None
+        sell_idx = -1; sell_info = None
 
-            max_price_after = max(highs[break_idx : current_idx+1])
-            move_pct = (max_price_after - resistance) / resistance
-            if move_pct < MIN_MOVE_PCT:
-                continue
+        for cur in range(start, n):
+            # --- تحديث آخر قمة/قاع كبرى ---
+            if not np.isnan(maj_ph[cur]):
+                last_major_ph = float(maj_ph[cur])
+            if not np.isnan(maj_pl[cur]):
+                last_major_pl = float(maj_pl[cur])
 
-            mid_point = break_idx + (bars_after // 2)
-            if mid_point < current_idx:
-                mid_low = min(lows[break_idx : mid_point+1])
-                if mid_low < resistance * 0.985:
-                    continue
+            # --- setup القمم (شراء) : الكبرى أولاً ثم الصغرى مع الدمج ---
+            if not np.isnan(maj_ph[cur]):
+                curr_ph = float(maj_ph[cur]); ph_state = 1; ph_broken = False; bars_above = 0; ph_setup = cur
+            elif not np.isnan(min_ph[cur]):
+                mp = float(min_ph[cur])
+                target = mp
+                if not np.isnan(last_major_ph):
+                    if abs(mp - last_major_ph) / last_major_ph <= P_PROX_PCT:
+                        target = float(last_major_ph)
+                curr_ph = target; ph_state = 1; ph_broken = False; bars_above = 0; ph_setup = cur
 
-            current_low   = lows[current_idx]
-            current_close = closes[current_idx]
-            current_open  = opens[current_idx]
+            # --- setup القيعان (بيع) ---
+            if not np.isnan(maj_pl[cur]):
+                curr_pl = float(maj_pl[cur]); pl_state = 1; pl_broken = False; bars_below = 0; pl_setup = cur
+            elif not np.isnan(min_pl[cur]):
+                mp = float(min_pl[cur])
+                target = mp
+                if not np.isnan(last_major_pl):
+                    if abs(mp - last_major_pl) / last_major_pl <= P_PROX_PCT:
+                        target = float(last_major_pl)
+                curr_pl = target; pl_state = 1; pl_broken = False; bars_below = 0; pl_setup = cur
 
-            near = (current_low <= resistance * (1 + RETEST_TOLERANCE) and 
-                    current_low >= resistance * (1 - RETEST_TOLERANCE * 1.3))
+            # --- منطق الشراء (نفس Pine) ---
+            if ph_state > 0 and not np.isnan(curr_ph):
+                if high_vals[cur] >= curr_ph * (1 + P_PCT_THRESH):
+                    ph_broken = True
+                if ph_state == 1:
+                    if close_vals[cur] > curr_ph:
+                        ph_state = 2; bars_above = 1
+                elif ph_state == 2:
+                    retest = curr_ph * (1 + P_RETEST_MARGIN)
+                    if low_vals[cur] <= retest:
+                        if ph_broken and bars_above > P_MIN_BARS:
+                            buy_idx = cur
+                            seg_high = float(np.max(high_vals[ph_setup:cur+1])) if ph_setup >= 0 else float(high_vals[cur])
+                            buy_info = dict(level=float(curr_ph), bars=int(bars_above), top=seg_high, setup=ph_setup)
+                        ph_state = 0
+                    else:
+                        bars_above += 1
 
-            if not near:
-                continue
+            # --- منطق البيع (عكس الشراء) ---
+            if pl_state > 0 and not np.isnan(curr_pl):
+                if low_vals[cur] <= curr_pl * (1 - P_PCT_THRESH):
+                    pl_broken = True
+                if pl_state == 1:
+                    if close_vals[cur] < curr_pl:
+                        pl_state = 2; bars_below = 1
+                elif pl_state == 2:
+                    retest = curr_pl * (1 - P_RETEST_MARGIN)
+                    if high_vals[cur] >= retest:
+                        if pl_broken and bars_below > P_MIN_BARS:
+                            sell_idx = cur
+                            seg_low = float(np.min(low_vals[pl_setup:cur+1])) if pl_setup >= 0 else float(low_vals[cur])
+                            sell_info = dict(level=float(curr_pl), bars=int(bars_below), bottom=seg_low, setup=pl_setup)
+                        pl_state = 0
+                    else:
+                        bars_below += 1
 
-            bullish = current_close > current_open
-            closed_above = current_close > resistance
-            bounce_from_low = (current_close - current_low) / current_low >= MIN_BOUNCE_PCT
+        # --- هل الإشارة على آخر الشموع؟ (نافذة 3 شموع عشان فحص 90د لا يفوت 30m) ---
+        last = n - 1
+        sig_type = None; sig_idx = -1; info = None
+        # لو الاثنين حديثين نأخذ الأحدث
+        buy_fresh = (buy_idx >= 0 and (last - buy_idx) < P_SIGNAL_WINDOW)
+        sell_fresh = (sell_idx >= 0 and (last - sell_idx) < P_SIGNAL_WINDOW)
+        if buy_fresh and sell_fresh:
+            if buy_idx >= sell_idx:
+                sig_type, sig_idx, info = "buy", buy_idx, buy_info
+            else:
+                sig_type, sig_idx, info = "sell", sell_idx, sell_info
+        elif buy_fresh:
+            sig_type, sig_idx, info = "buy", buy_idx, buy_info
+        elif sell_fresh:
+            sig_type, sig_idx, info = "sell", sell_idx, sell_info
+        else:
+            return None, None
 
-            if bullish and closed_above and bounce_from_low:
-                vol_text = ""
-                if volumes is not None and len(volumes) > 15:
-                    avg_vol = np.mean(volumes[-16:-1])
-                    if avg_vol > 0:
-                        ratio = volumes[-1] / avg_vol
-                        vol_text = f" | الحجم x{ratio:.1f}"
+        cur_close = float(close_vals[last])
+        vol_text = ""
+        if vols is not None and len(vols) > 15:
+            try:
+                avg = float(np.mean(vols[-16:-1]))
+                if avg > 0:
+                    vol_text = f" | الحجم x{float(vols[-1])/avg:.1f}"
+            except Exception:
+                pass
 
-                msg = (
-                    f"🟢 <b>تبادل أدوار صحيح</b>\n"
-                    f"━━━━━━━━━━━━━━━━\n"
-                    f"<b>${sym}</b>  |  {sector}\n"
-                    f"📊 الفريم: <b>{tf_info['name']}</b>\n"
-                    f"━━━━━━━━━━━━━━━━\n"
-                    f"📍 مقاومة سابقة: <b>${resistance:.2f}</b>\n"
-                    f"📈 أعلى سعر بعد الاختراق: ${max_price_after:.2f} (+{move_pct*100:.1f}%)\n"
-                    f"💰 السعر الحالي: <b>${current_close:.2f}</b>\n"
-                    f"⏱️ عدد الشموع بعد الاختراق: {bars_after}{vol_text}\n"
-                    f"━━━━━━━━━━━━━━━━\n"
-                    f"✅ اختراق + مشي + رجوع تدريجي + ارتداد"
-                )
-                return msg
+        if sig_type == "buy":
+            lvl = info["level"]; bars = info["bars"]; top = info["top"]
+            move = (top - lvl) / lvl * 100 if lvl else 0
+            msg = (
+                f"🟢 <b>تبادل أدوار شراء (Pine)</b>\n"
+                f"━━━━━━━━━━━━━━━━\n"
+                f"<b>${sym}</b>  |  {sector}\n"
+                f"📊 الفريم: <b>{tf_info['name']}</b>\n"
+                f"━━━━━━━━━━━━━━━━\n"
+                f"📍 القمة المخترقة: <b>${lvl:.2f}</b>\n"
+                f"📈 أعلى بعد الاختراق: ${top:.2f} (+{move:.1f}% / شرط +3%)\n"
+                f"⏱️ البقاء فوق القمة: {bars} شموع (شرط &gt;3)\n"
+                f"💰 السعر الحالي: <b>${cur_close:.2f}</b> (إعادة اختبار 0.5%){vol_text}\n"
+                f"━━━━━━━━━━━━━━━━\n"
+                f"✅ إغلاق فوق + اختراق 3% + ثبات + لمس القمة"
+            )
+            return "buy", msg
+        else:
+            lvl = info["level"]; bars = info["bars"]; bot = info["bottom"]
+            move = (lvl - bot) / lvl * 100 if lvl else 0
+            msg = (
+                f"🔴 <b>تبادل أدوار بيع (Pine)</b>\n"
+                f"━━━━━━━━━━━━━━━━\n"
+                f"<b>${sym}</b>  |  {sector}\n"
+                f"📊 الفريم: <b>{tf_info['name']}</b>\n"
+                f"━━━━━━━━━━━━━━━━\n"
+                f"📍 القاع المكسور: <b>${lvl:.2f}</b>\n"
+                f"📉 أدنى بعد الكسر: ${bot:.2f} (-{move:.1f}% / شرط -3%)\n"
+                f"⏱️ البقاء تحت القاع: {bars} شموع (شرط &gt;3)\n"
+                f"💰 السعر الحالي: <b>${cur_close:.2f}</b> (إعادة اختبار 0.5%){vol_text}\n"
+                f"━━━━━━━━━━━━━━━━\n"
+                f"✅ إغلاق تحت + كسر 3% + ثبات + لمس القاع"
+            )
+            return "sell", msg
 
-        return None
     except Exception as e:
-        return None
+        # print(f"{sym} pine err: {e}")
+        return None, None
 
-# ==================== الفحص الرئيسي ====================
+# ==================== الفحص الرئيسي (نفس الهيكل القديم) ====================
 def check_all():
     print(f"\n{'='*55}")
     print(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*55}")
 
-    total_signals = 0
+    total_buy = 0
+    total_sell = 0
 
     for sym, sector in STOCKS.items():
         print(f"▶️ {sym}", end=" ")
 
+        # فلتر MA50 للشراء فقط (البيع مسموح حتى تحت المتوسط)
         df_d = get_data(sym, "1d", "1y")
         if df_d is None or len(df_d) < 50:
             print("→ بيانات ناقصة")
             continue
-
-        ma50 = df_d["Close"].rolling(50).mean().iloc[-1]
-        if df_d["Close"].iloc[-1] < ma50 * 0.98:
-            print("→ تحت MA50")
-            continue
+        try:
+            ma50 = float(df_d["Close"].rolling(50).mean().iloc[-1])
+            last_d = float(df_d["Close"].iloc[-1])
+            below_ma = last_d < ma50 * 0.98
+        except Exception:
+            below_ma = False
 
         found = False
         for tf_key, tf_info in TIMEFRAMES.items():
-            key = f"{sym}_{tf_key}"
-            if key in sent_signals and datetime.now() - sent_signals[key] < timedelta(hours=8):
+            # مفاتيح منفصلة شراء/بيع عشان ما يحجب أحدهما الآخر
+            kb = f"{sym}_{tf_key}_BUY"
+            ks = f"{sym}_{tf_key}_SELL"
+            now = datetime.now()
+            if kb in sent_signals and ks in sent_signals:
+                if now - sent_signals[kb] < timedelta(hours=8) and now - sent_signals[ks] < timedelta(hours=8):
+                    continue
+
+            sig, msg = check_pine_reversal(sym, sector, tf_key, tf_info)
+            if sig is None:
                 continue
 
-            msg = check_role_reversal(sym, sector, tf_key, tf_info)
-            if msg:
+            if sig == "buy":
+                if below_ma:
+                    # نتجاهل الشراء تحت MA50 ونكمل فريم ثاني (البيع سيظهر لو موجود)
+                    continue
+                if kb in sent_signals and now - sent_signals[kb] < timedelta(hours=8):
+                    continue
                 send_telegram(msg)
-                sent_signals[key] = datetime.now()
-                print(f"→ ✅ إشارة على {tf_info['name']}")
-                total_signals += 1
+                sent_signals[kb] = now
+                print(f"→ ✅ شراء Pine على {tf_info['name']}")
+                total_buy += 1
+                found = True
+                time.sleep(1.1)
+                break
+            else:  # sell — بدون فلتر MA50
+                if ks in sent_signals and now - sent_signals[ks] < timedelta(hours=8):
+                    continue
+                send_telegram(msg)
+                sent_signals[ks] = now
+                print(f"→ 🔻 بيع Pine على {tf_info['name']}")
+                total_sell += 1
                 found = True
                 time.sleep(1.1)
                 break
@@ -328,18 +436,19 @@ def check_all():
         time.sleep(0.35)
 
     summary = (
-        f"🔍 <b>انتهى الفحص</b>\n"
-        f"إشارات صحيحة: {total_signals}\n"
+        f"🔍 <b>انتهى الفحص (Pine)</b>\n"
+        f"🟢 شراء: {total_buy} | 🔴 بيع: {total_sell}\n"
         f"⏱️ {datetime.now().strftime('%H:%M:%S')}"
     )
     send_telegram(summary)
-    print(f"\n✅ إجمالي الإشارات: {total_signals}")
+    print(f"\n✅ شراء: {total_buy} | بيع: {total_sell}")
 
 # ==================== التشغيل ====================
 if __name__ == "__main__":
-    print("🚀 بوت تبادل الأدوار - نسخة محسنة (متعدد الفريمات)")
+    print("🚀 بوت تبادل الأدوار - نسخة Pine المستبدلة")
     print(f"عدد الأسهم: {len(STOCKS)}")
-    print("الفريمات: 30م | 1س | 4س | يومي | أسبوعي\n")
+    print("الفريمات: 30م | 1س | 4س | يومي | أسبوعي")
+    print("الشروط: قمة/قاع (3,7) + دمج 1.5% + اختراق 3% + ثبات >3 + retest 0.5%\n")
 
     check_all()
     schedule.every(90).minutes.do(check_all)
